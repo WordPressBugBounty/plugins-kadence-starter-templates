@@ -6,7 +6,7 @@
  * @link    https://github.com/adbario/php-dot-notation
  * @license https://github.com/adbario/php-dot-notation/blob/2.x/LICENSE.md (MIT License)
  *
- * Modified by kadencewp on 29-May-2024 using {@see https://github.com/BrianHenryIE/strauss}.
+ * Modified using {@see https://github.com/BrianHenryIE/strauss}.
  */
 namespace KadenceWP\KadenceStarterTemplates\Adbar;
 

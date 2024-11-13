@@ -33,6 +33,8 @@ use WC_Product_Attribute;
 use WP_Error;
 use WC_Install;
 use function sanitize_file_name;
+use function wp_safe_remote_get;
+use function flush_rewrite_rules;
 use function wp_send_json;
 use function wp_remote_get;
 use function wp_remote_retrieve_body;
@@ -542,6 +544,18 @@ class Library_REST_Controller extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'install_events' ),
+					'permission_callback' => array( $this, 'get_items_permission_check' ),
+					'args'                => $this->get_collection_params(),
+				),
+			)
+		);
+		register_rest_route(
+			$this->namespace,
+			'/install-course',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'install_course' ),
 					'permission_callback' => array( $this, 'get_items_permission_check' ),
 					'args'                => $this->get_collection_params(),
 				),
@@ -2223,6 +2237,63 @@ class Library_REST_Controller extends WP_REST_Controller {
 							$args
 						);
 					}
+				} else if ( 'courses' === $install_goal && post_type_exists( 'sfwd-courses' ) ) {
+					// Lets not duplicate pages.
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Courses',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title' => get_the_title( $has_page[0]->ID ),
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+					} else {
+						if ( defined( 'LEARNDASH_COURSE_GRID_VERSION' ) ) {
+							$page_content = '<!-- wp:learndash/ld-course-grid {"per_page":"12","thumbnail_size":"medium","ribbon":false,"title_clickable":true,"post_meta":false,"button":true,"pagination":"false","grid_height_equal":true,"progress_bar":true,"filter":false,"card":"grid-3","items_per_row":"3","font_family_title":"inter","font_family_description":"inter","font_size_title":"24px","font_size_description":"14px","font_color_description":"#4a4a68","id":"ld-cg-lxdnpir6oz","filter_search":false,"filter_price":false,"className":"home-course-grid"} /-->';
+							// Create Shop page using wp_insert_post
+							$page_id = wp_insert_post(
+								array(
+								'post_title'   => 'Courses',
+								'post_content' => $page_content,
+								'post_status'  => 'publish',
+								'post_type'    => 'page',
+								)
+							);
+							if ( ! is_wp_error( $page_id ) ) {
+								update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
+								$args = array(
+									'menu-item-title'     => 'Courses',
+									'menu-item-object-id' => $page_id,
+									'menu-item-object'    => 'page',
+									'menu-item-status'    => 'publish',
+									'menu-item-type'      => 'post_type',
+									'menu-item-position'  => $extra_order,
+								);
+								$item_id = wp_update_nav_menu_item(
+									$menu_id,
+									0,
+									$args
+								);
+							}
+						} else {
+							$args = array(
+								'menu-item-title' => 'Courses',
+								'menu-item-url' => get_post_type_archive_link( 'sfwd-courses' ),
+								'menu-item-status' => 'publish',
+								'menu-item-position'  => $extra_order,
+							);
+							$item_id = wp_update_nav_menu_item(
+								$menu_id,
+								0,
+								$args
+							);
+						}
+					}
 				}
 			}
 			$locations = get_theme_mod( 'nav_menu_locations' );
@@ -2906,6 +2977,16 @@ class Library_REST_Controller extends WP_REST_Controller {
 				}
 			}
 		}
+		// Setup Learndash.
+		$this->setup_learndash();
+		// Check permalink settings:
+		$current_permalink_structure = get_option( 'permalink_structure' );
+
+		// Check if permalinks are set to default.
+		if ( empty( $current_permalink_structure ) ) {
+			update_option( 'permalink_structure', '/%postname%/' );
+		}
+
 		return rest_ensure_response( 'updated' );
 	}
 	/**
@@ -3199,6 +3280,141 @@ class Library_REST_Controller extends WP_REST_Controller {
 			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
 		}
 		return rest_ensure_response( $new_events );
+	}
+	/**
+	 * Install Course.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 */
+	public function install_course( WP_REST_Request $request ) {
+		if ( ! class_exists( '\Learndash_Admin_Import_Export' ) ) {
+			return new WP_Error( 'no_course', __( 'No LearnDash' ), array( 'status' => 500 ) );
+		}
+		$has_course = get_posts( [
+			'post_type'  => 'sfwd-courses',
+			'title' => 'Getting Started with LearnDash',
+		] );
+		if ( $has_course ) {
+			return rest_ensure_response( $has_course[0]->ID );
+		}
+		// $new_courses = \Learndash_Admin_Import_Export::import_demo_content( KADENCE_STARTER_TEMPLATES_PATH . 'assets/ld-demo/learndash-demo.zip' );
+		$user_id = get_current_user_id();
+		$options = json_decode( '{"post_types":["sfwd-courses","sfwd-lessons","sfwd-topic","sfwd-quiz","sfwd-question","groups","sfwd-assignment","sfwd-certificates"],"post_type_settings":["sfwd-courses","sfwd-lessons","sfwd-topic","sfwd-quiz","sfwd-question","groups","sfwd-assignment","sfwd-certificates"],"users":[],"other":["settings"],"info":{"ld_version":"4.15.2","wp_version":"6.5.5","db_prefix":"wp_","is_multisite":true,"blog_id":1,"home_url":"https:\/\/base.startertemplatecloud.com"}}', true );
+		$ld_file_handler = new \Learndash_Admin_Import_File_Handler();
+		$ld_file_handler->set_working_directory( KADENCE_STARTER_TEMPLATES_PATH . 'assets/ld-demo/learndash-demo' );
+		$ld_importers_mapper = new \Learndash_Admin_Import_Mapper( $ld_file_handler,
+		new \Learndash_Import_Export_Logger( \Learndash_Import_Export_Logger::$log_type_import ) );
+		$course_ids = array();
+		foreach ( $ld_importers_mapper->map( $options, $user_id ) as $importer ) {
+			$importer->import_data();
+			\Learndash_Admin_Import::clear_wpdb_query_cache();
+
+			/**
+			 * Fires after an importer had been processed.
+			 *
+			 * @param Learndash_Admin_Import $importer The Learndash_Admin_Import instance.
+			 *
+			 * @since 4.3.0
+			 */
+			do_action( 'learndash_import_importer_processed', $importer );
+
+			$new_post = $importer->get_new_post_id_by_old_post_id( 7214 );
+			if ( $new_post && ! in_array( $new_post, $course_ids ) ) {
+				$course_ids[] = $new_post;
+			}
+		}
+		( new \Learndash_Admin_Import_Associations_Handler() )->handle();
+		$new_courses = true;
+		if ( empty( $new_courses ) ) {
+			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
+		}
+		return rest_ensure_response( $new_courses );
+	}
+	/**
+	 * Install Learndash Settings.
+	 *
+	 * @return null;
+	 */
+	public function setup_learndash() {
+		if ( ! class_exists( '\LearnDash_Settings_Section' ) ) {
+			return;
+		}
+		// LearnDash Theme Settings.
+		$instance = \LearnDash_Settings_Section::get_section_instance( 'LearnDash_Settings_Theme_LD30' );
+		$instance::set_setting( 'color_primary', 'var(--global-palette1, #0073aa)' );
+		$instance::set_setting( 'color_secondary', 'var(--global-palette2, #215387)' );
+
+		// LearnDash Page Settings.
+		$ld_page_instance = \LearnDash_Settings_Section::get_section_instance( 'LearnDash_Settings_Section_Registration_Pages' );
+		$success_id = $ld_page_instance::get_setting( 'registration_success', '' );
+		if ( ! empty( $success_id ) ) {
+			update_post_meta( $success_id, '_kad_post_layout', 'narrow' );
+			update_post_meta( $success_id, '_kad_post_vertical_padding', 'show' );
+		} else {
+			$success_id = wp_insert_post(
+				array(
+					'post_title'  => 'Registration Success',
+					'post_type'   => 'page',
+					'post_status' => 'publish',
+				)
+			);
+			if ( ! is_wp_error( $success_id ) ) {
+				update_post_meta( $success_id, '_kadence_starter_templates_imported_post', true );
+				update_post_meta( $success_id, '_kad_post_layout', 'narrow' );
+				update_post_meta( $success_id, '_kad_post_vertical_padding', 'show' );
+				$ld_page_instance::set_setting( 'registration_success', $success_id );
+			}
+		}
+		$registration_id = $ld_page_instance::get_setting( 'registration', '' );
+		if ( ! empty( $registration_id ) ) {
+			update_post_meta( $registration_id, '_kad_post_layout', 'narrow' );
+			update_post_meta( $registration_id, '_kad_post_vertical_padding', 'show' );
+		} else {
+			$registration_id = wp_insert_post(
+				array(
+					'post_title'  => 'Registration',
+					'post_type'   => 'page',
+					'post_content' => '<!-- wp:learndash/ld-registration /-->',
+					'post_status' => 'publish',
+				)
+			);
+			if ( ! is_wp_error( $registration_id ) ) {
+				update_post_meta( $registration_id, '_kadence_starter_templates_imported_post', true );
+				update_post_meta( $registration_id, '_kad_post_layout', 'narrow' );
+				update_post_meta( $registration_id, '_kad_post_vertical_padding', 'show' );
+				$ld_page_instance::set_setting( 'registration', $registration_id );
+			}
+		}
+		$reset_id = $ld_page_instance::get_setting( 'reset_password', '' );
+		if ( ! empty( $reset_id ) ) {
+			update_post_meta( $reset_id, '_kad_post_layout', 'narrow' );
+			update_post_meta( $reset_id, '_kad_post_vertical_padding', 'show' );
+		} else {
+			$reset_id = wp_insert_post(
+				array(
+					'post_title'  => 'Reset Password',
+					'post_type'   => 'page',
+					'post_content' => '<!-- wp:learndash/ld-reset-password {"width":""} /-->',
+					'post_status' => 'publish',
+				)
+			);
+			if ( ! is_wp_error( $reset_id ) ) {
+				update_post_meta( $reset_id, '_kadence_starter_templates_imported_post', true );
+				update_post_meta( $reset_id, '_kad_post_layout', 'narrow' );
+				update_post_meta( $reset_id, '_kad_post_vertical_padding', 'show' );
+				$ld_page_instance::set_setting( 'reset_password', $reset_id );
+			}
+		}
+
+		// Update Course Layout.
+		set_theme_mod( 'sfwd-courses_layout', 'narrow' );
+		set_theme_mod( 'sfwd-courses_content_style', 'unboxed' );
+		// Update Lesson Layout.
+		set_theme_mod( 'sfwd-lessons_layout', 'narrow' );
+		set_theme_mod( 'sfwd-lessons_content_style', 'unboxed' );
+
+		return;
 	}
 	/**
 	 * Install Products.
