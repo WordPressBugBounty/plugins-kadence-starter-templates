@@ -115,6 +115,7 @@ class Helpers {
 		$downloader = new Downloader();
 		// ----- Set content file path -----
 		// Check if 'content' is not defined. That would mean a local file.
+		
 		if ( empty( $import_file_info['content'] ) ) {
 			if ( isset( $import_file_info['local_content'] ) && file_exists( $import_file_info['local_content'] ) ) {
 				$downloaded_files['content'] = $import_file_info['local_content'];
@@ -122,7 +123,6 @@ class Helpers {
 		} else {
 			// Set the filename string for content import file.
 			$content_filename = apply_filters( 'kadence-starter-templates/downloaded_content_file_prefix', 'demo-content-import-file_' ) . self::$demo_import_start_time . apply_filters( 'kadence-starter-templates/downloaded_content_file_suffix_and_file_extension', '.xml' );
-
 			// Download the content import file.
 			$downloaded_files['content'] = $downloader->download_file( $import_file_info['content'], $content_filename );
 

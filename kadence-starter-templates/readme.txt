@@ -3,7 +3,7 @@ Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
 Tested up to: 6.7
-Stable tag: 2.1.4
+Stable tag: 2.1.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -124,6 +124,10 @@ assist you with verification, CVE assignment, and notify the
 developers of this plugin.
 
 == Changelog ==
+
+= 2.1.5 =
+* Fix: Issue where some pro templates would not import.
+* Fix: Issue where LearnDash warning was showing incorrectly.
 
 = 2.1.4 =
 * Add: Course data for LearnDash.

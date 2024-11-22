@@ -287,6 +287,18 @@ class Template_Database_Importer {
 		return $this->local_template_data_path;
 	}
 	/**
+	 * Get the current license key for the plugin.
+	 */
+	public function get_current_license_key() {
+		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
+			$data = kadence_blocks_get_current_license_data();
+			if ( ! empty( $data['key'] ) ) {
+				return $data['key'];
+			}
+		}
+		return get_license_key( 'kadence-starter-templates' );
+	}
+	/**
 	 * Get the local data filename.
 	 *
 	 * This is a hash, generated from the site-URL, the wp-content path and the URL.
@@ -296,24 +308,9 @@ class Template_Database_Importer {
 	 * @return string
 	 */
 	public function get_local_template_data_filename() {
-		$ktp_api = 'free';
-		if ( class_exists( 'Kadence_Theme_Pro' ) ) {
-			$pro_data = array();
-			if ( function_exists( '\KadenceWP\KadencePro\StellarWP\Uplink\get_license_key' ) ) {
-				$pro_data['ktp_api_key'] = \KadenceWP\KadencePro\StellarWP\Uplink\get_license_key( 'kadence-theme-pro' );
-			}
-			if ( empty( $pro_data ) ) {
-				if ( is_multisite() && ! apply_filters( 'kadence_activation_individual_multisites', false ) ) {
-					$pro_data = get_site_option( 'ktp_api_manager' );
-				} else {
-					$pro_data = get_option( 'ktp_api_manager' );
-				}
-			}
-			if ( $pro_data && isset( $pro_data['ktp_api_key'] ) && ! empty( $pro_data['ktp_api_key'] ) ) {
-				$ktp_api = $pro_data['ktp_api_key'];
-			} else if ( $pro_data && isset( $pro_data['ithemes_key'] ) && ! empty( $pro_data['ithemes_key'] ) ) {
-				$ktp_api = $pro_data['ithemes_key'];
-			}
+		$ktp_api = $this->get_current_license_key();
+		if ( empty( $ktp_api ) ) {
+			$ktp_api = 'free';
 		}
 		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api );
 	}
@@ -354,7 +351,6 @@ class Template_Database_Importer {
 		$this->api_key       = empty( $_POST['api_key'] ) ? '' : sanitize_text_field( $_POST['api_key'] );
 		$this->api_email     = empty( $_POST['api_email'] ) ? '' : sanitize_text_field( $_POST['api_email'] );
 		$this->template_type = empty( $_POST['template_type'] ) ? 'blocks' : sanitize_text_field( $_POST['template_type'] );
-
 		$removed = $this->delete_starter_templates_folder();
 		if ( ! $removed ) {
 			wp_send_json_error( 'failed_to_flush' );

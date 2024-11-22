@@ -2419,7 +2419,6 @@ class Starter_Templates {
 
 				// Download the import files (content, widgets and customizer files).
 				$this->selected_import_files = Helpers::download_import_files( $this->import_files[ $this->selected_index ] );
-
 				// Check Errors.
 				if ( is_wp_error( $this->selected_import_files ) ) {
 					// Write error to log file and send an AJAX response with the error.
