@@ -8,6 +8,8 @@
 
 namespace KadenceWP\KadenceStarterTemplates;
 
+use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
