@@ -3,7 +3,7 @@
         'name' => 'kadencewp/kadence-starter-templates',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => 'd3713c63be38dde23f613b40dfab7f61004effe5',
+        'reference' => '00ede10d383d17afcab66ab84b2e0cd1e0dbe4cf',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -31,7 +31,7 @@
         'kadencewp/kadence-starter-templates' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => 'd3713c63be38dde23f613b40dfab7f61004effe5',
+            'reference' => '00ede10d383d17afcab66ab84b2e0cd1e0dbe4cf',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

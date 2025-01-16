@@ -49,6 +49,7 @@ use function get_post_type_archive_url;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+use function kadence_blocks_get_current_license_data;
 /**
  * REST API prebuilt library.
  */
@@ -149,8 +150,15 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * @var string
 	 */
 	private $api_email = '';
+
 	/**
-	 * API email for kadence membership
+	 * The Product slug
+	 *
+	 * @var string
+	 */
+	private $product_slug = '';
+	/**
+	 * The template type
 	 *
 	 * @var string
 	 */
@@ -824,8 +832,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 	public function get_auth_data( $request ) {
 		$this->get_license_keys();
 		$auth = array(
-			'domain' => $this->site_url,
-			'key'    => $this->api_key,
+			'domain'  => $this->site_url,
+			'key'     => $this->api_key,
+			'product' => $this->product_slug,
 		);
 		return rest_ensure_response( $auth );
 	}
@@ -845,6 +854,49 @@ class Library_REST_Controller extends WP_REST_Controller {
 		} else {
 			return rest_ensure_response( $response );
 		}
+	}
+	/**
+	 * Get remote file contents.
+	 *
+	 * @access public
+	 * @return string Returns the remote URL contents.
+	 */
+	public function get_remote_remaining_credits() {
+		$product_slug = 'kadence-starter-templates';
+		if ( ! empty( $this->product_slug ) && 'kadence-blocks-pro' === $this->product_slug ) {
+			$product_slug = 'kadence-blocks-pro';
+		} else if ( ! empty( $this->product_slug ) && ( 'kadence-creative-kit' === $this->product_slug || 'kadence-blocks' === $this->product_slug ) ) {
+			$product_slug = 'kadence-blocks';
+		}
+		$args = [
+			'site'        => get_license_domain(),
+			'key'         => $this->api_key,
+			'plugin_slug' => apply_filters( 'kadence-blocks-auth-slug', $product_slug ),
+		];
+		if ( ! empty( $this->api_email ) ) {
+			// Send in case we need to verify with old api.
+			$args['email'] = $this->api_email;
+		}
+		$api_url  = add_query_arg( $args, $this->remote_credits_url . 'get-remaining' );
+		$response = wp_safe_remote_get(
+			$api_url,
+			[
+				'timeout' => 20,
+			]
+		);
+		// Early exit if there was an error.
+		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
+			return 'error';
+		}
+
+		// Get the CSS from our response.
+		$contents = wp_remote_retrieve_body( $response );
+		// Early exit if there was an error.
+		if ( is_wp_error( $contents ) ) {
+			return 'error';
+		}
+
+		return $contents;
 	}
 	/**
 	 * Retrieves all the currently available ai content.
@@ -1178,7 +1230,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 			array(
 				'timeout' => 20,
 				'headers' => array(
-					'X-Prophecy-Token' => base64_encode( json_encode( $auth ) ),
+					'X-Prophecy-Token' => $this->get_token_header(),
 				),
 			)
 		);
@@ -1461,7 +1513,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 			array(
 				'timeout' => 20,
 				'headers' => array(
-					'X-Prophecy-Token' => base64_encode( json_encode( $auth ) ),
+					'X-Prophecy-Token' => $this->get_token_header(),
 					'Content-Type' => 'application/json',
 				),
 				'body' => json_encode( $body ),
@@ -3574,15 +3626,21 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 *
 	 * @return string The base64 encoded string.
 	 */
-	public function get_token_header( $args = array() ) {
-		$this->get_license_keys();
+	public function get_token_header( $args = [] ) {
 		$site_name    = get_bloginfo( 'name' );
-		$defaults = [
-			'domain'          => $this->site_url,
-			'key'             => ! empty( $this->api_key ) ? $this->api_key : '',
-			'email'           => ! empty( $this->api_email ) ? $this->api_email : '',
+		$license_data = $this->get_pro_license_data();
+		$product_slug = 'kadence-starter-templates';
+		if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-blocks-pro';
+		} else if ( ! empty( $license_data['product'] ) && ( 'kadence-creative-kit' === $license_data['product'] || 'kadence-blocks' === $license_data['product'] ) ) {
+			$product_slug = 'kadence-blocks';
+		}
+		$defaults     = [
+			'domain'          => ! empty( $license_data['site_url'] ) ? $license_data['site_url'] : '',
+			'key'             => ! empty( $license_data['key'] ) ? $license_data['key'] : '',
+			'email'           => ! empty( $license_data['api_email'] ) ? $license_data['api_email'] : '',
 			'site_name'       => sanitize_title( $site_name ),
-			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', 'kadence-starter-templates' ),
+			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', $product_slug ),
 			'product_version' => KADENCE_STARTER_TEMPLATES_VERSION,
 		];
 
@@ -4744,10 +4802,11 @@ class Library_REST_Controller extends WP_REST_Controller {
 		$args = apply_filters(
 			'kadence_starter_get_templates_args',
 			array(
-				'request'   => ( $this->template_type ? $this->template_type : 'blocks' ),
-				'api_email' => $this->api_email,
-				'api_key'   => $this->api_key,
-				'site_url'  => $this->site_url,
+				'request'      => ( $this->template_type ? $this->template_type : 'blocks' ),
+				'api_email'    => $this->api_email,
+				'api_key'      => $this->api_key,
+				'site_url'     => $this->site_url,
+				'product_slug' => $this->product_slug,
 			)
 		);
 		// Get the response.
@@ -5149,6 +5208,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 		if ( ! empty( $data['site_url'] ) ) {
 			$this->site_url = $data['site_url'];
 		}
+		if ( ! empty( $data['product_slug'] ) ) {
+			$this->product_slug = $data['product_slug'];
+		}
 		return $data;
 	}
 	/**
@@ -5166,44 +5228,29 @@ class Library_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Get the current license key for the plugin.
 	 */
-	public function get_current_license_email() {
-		// Check if we have pro active.
-		if ( class_exists( 'Kadence_Blocks_Pro' ) ) {
-			$license_key = get_option( 'stellarwp_uplink_license_key_kadence-blocks-pro', '' );
-			if ( ! empty( $license_key ) ) {
-				return '';
-			} else {
-				$license_data = $this->get_old_pro_license_data();
-				if ( $license_data && ! empty( $license_data['api_email'] ) ) {
-					return $license_data['api_email'];
-				}
-			}
-		}
-		return '';
-	}
-	/**
-	 * Get the current license key for the plugin.
-	 */
 	public function get_pro_license_data() {
-		$license_data = array(
-			'api_key'   => $this->get_current_license_key(),
-			'api_email' => $this->get_current_license_email(),
-			'site_url'  => get_original_domain(),
-		);
-		return $license_data;
-	}
-	/**
-	 * Get the license information.
-	 *
-	 * @return array
-	 */
-	public function get_old_pro_license_data() {
-		$data = false;
-		if ( is_multisite() && ! apply_filters( 'kadence_activation_individual_multisites', true ) ) {
-			$data = get_site_option( 'kt_api_manager_kadence_gutenberg_pro_data' );
+		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
+			$data = kadence_blocks_get_current_license_data();
+			if ( empty( $data['key'] ) ) {
+				$data = [ 
+					'key'     => get_license_key( 'kadence-starter-templates' ),
+					'product' => 'kadence-starter-templates',
+					'email'   => '',
+				];
+			}
 		} else {
-			$data = get_option( 'kt_api_manager_kadence_gutenberg_pro_data' );
+			$data = [ 
+				'key'     => get_license_key( 'kadence-starter-templates' ),
+				'product' => 'kadence-starter-templates',
+				'email'   => '',
+			];
 		}
-		return $data;
+		$license_data = [
+			'api_key'   => ( ! empty( $data['key'] ) ? $data['key'] : '' ),
+			'api_email' => ( ! empty( $data['email'] ) ? $data['email'] : '' ), // Backwards compatibility with older licensing.
+			'site_url'  => get_original_domain(),
+			'product_slug' => ( ! empty( $data['product'] ) ? $data['product'] : 'kadence-starter-templates' ),
+		];
+		return $license_data;
 	}
 }

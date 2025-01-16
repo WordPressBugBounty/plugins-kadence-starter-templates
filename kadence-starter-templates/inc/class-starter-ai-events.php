@@ -12,6 +12,7 @@ use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_doma
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\is_authorized;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+use function kadence_blocks_get_current_license_data;
 
 /**
  * Class responsible for sending events AI Events to Stellar Prophecy WP AI.
@@ -157,7 +158,27 @@ class Kadence_Starter_Templates_AI_Events {
 			)
 		);
 	}
-
+	/**
+	 * Get the current license key for the plugin.
+	 */
+	public function get_pro_license_data() {
+		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
+			$data = kadence_blocks_get_current_license_data();
+		} else {
+			$data = [ 
+				'key'     => get_license_key( 'kadence-starter-templates' ),
+				'product' => 'kadence-starter-templates',
+				'email'   => '',
+			];
+		}
+		$license_data = [
+			'api_key'   => ( ! empty( $data['key'] ) ? $data['key'] : '' ),
+			'api_email' => ( ! empty( $data['email'] ) ? $data['email'] : '' ), // Backwards compatibility with older licensing.
+			'site_url'  => get_original_domain(),
+			'product_slug' => ( ! empty( $data['product'] ) ? $data['product'] : 'kadence-starter-templates' ),
+		];
+		return $license_data;
+	}
 	/**
 	 * Constructs a consistent X-Prophecy-Token header.
 	 *
@@ -166,15 +187,16 @@ class Kadence_Starter_Templates_AI_Events {
 	 * @return string The base64 encoded string.
 	 */
 	public function get_prophecy_token_header( $args = [] ) {
-		$site_url     = get_original_domain();
 		$site_name    = get_bloginfo( 'name' );
-		$license_key  = $this->get_current_license_key();
+		$license_data = $this->get_pro_license_data();
+		$product_slug = ( ! empty( $license_data['product'] ) ? $license_data['product'] : 'kadence-starter-templates' );
 		$defaults = [
-			'domain'          => $site_url,
-			'key'             => ! empty( $license_key ) ? $license_key : '',
+			'domain'          => ! empty( $license_data['site_url'] ) ? $license_data['site_url'] : '',
+			'key'             => ! empty( $license_data['key'] ) ? $license_data['key'] : '',
 			'site_name'       => sanitize_title( $site_name ),
-			'product_slug'    => 'kadence-starter-templates',
+			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', $product_slug ),
 			'product_version' => KADENCE_STARTER_TEMPLATES_VERSION,
+			'product_source'  => 'kadence-starter-templates',
 		];
 
 		$parsed_args = wp_parse_args( $args, $defaults );
