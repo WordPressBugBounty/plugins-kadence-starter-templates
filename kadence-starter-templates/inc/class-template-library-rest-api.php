@@ -3637,7 +3637,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 		}
 		$defaults     = [
 			'domain'          => ! empty( $license_data['site_url'] ) ? $license_data['site_url'] : '',
-			'key'             => ! empty( $license_data['key'] ) ? $license_data['key'] : '',
+			'key'             => ! empty( $license_data['api_key'] ) ? $license_data['api_key'] : '',
 			'email'           => ! empty( $license_data['api_email'] ) ? $license_data['api_email'] : '',
 			'site_name'       => sanitize_title( $site_name ),
 			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', $product_slug ),
