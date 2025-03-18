@@ -70,7 +70,7 @@ final class RepositoryBuilder
      *
      * @return void
      */
-    private function __construct(array $readers = [], array $writers = [], bool $immutable = false, array $allowList = null)
+    private function __construct(array $readers = [], array $writers = [], bool $immutable = false, ?array $allowList = null)
     {
         $this->readers = $readers;
         $this->writers = $writers;
@@ -249,7 +249,7 @@ final class RepositoryBuilder
      *
      * @return \KadenceWP\KadenceStarterTemplates\Dotenv\Repository\RepositoryBuilder
      */
-    public function allowList(array $allowList = null)
+    public function allowList(?array $allowList = null)
     {
         return new self($this->readers, $this->writers, $this->immutable, $allowList);
     }

@@ -11,6 +11,5 @@ require_once __DIR__ . '/symfony/deprecation-contracts/function.php';
 require_once __DIR__ . '/symfony/polyfill-php73/bootstrap.php';
 require_once __DIR__ . '/symfony/polyfill-intl-idn/bootstrap.php';
 require_once __DIR__ . '/symfony/polyfill-intl-normalizer/bootstrap.php';
-require_once __DIR__ . '/symfony/polyfill-php72/bootstrap.php';
 require_once __DIR__ . '/symfony/string/Resources/functions.php';
 require_once __DIR__ . '/symfony/polyfill-intl-grapheme/bootstrap.php';

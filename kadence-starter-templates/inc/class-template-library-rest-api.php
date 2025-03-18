@@ -98,6 +98,10 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 */
 	const PROP_PLUGINS = 'plugins';
 	/**
+	 * Handle plugin slug.
+	 */
+	const PROP_PLUGIN = 'plugin';
+	/**
 	 * Handle pages array.
 	 */
 	const PROP_PAGES = 'pages';
@@ -463,6 +467,18 @@ class Library_REST_Controller extends WP_REST_Controller {
 		);
 		register_rest_route(
 			$this->namespace,
+			'/install-plugin',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'install_plugin' ),
+					'permission_callback' => array( $this, 'get_items_permission_check' ),
+					'args'                => $this->get_collection_params(),
+				),
+			)
+		);
+		register_rest_route(
+			$this->namespace,
 			'/install-pages',
 			array(
 				array(
@@ -564,6 +580,18 @@ class Library_REST_Controller extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'install_course' ),
+					'permission_callback' => array( $this, 'get_items_permission_check' ),
+					'args'                => $this->get_collection_params(),
+				),
+			)
+		);
+		register_rest_route(
+			$this->namespace,
+			'/install-donation-form',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'install_donation_form' ),
 					'permission_callback' => array( $this, 'get_items_permission_check' ),
 					'args'                => $this->get_collection_params(),
 				),
@@ -777,51 +805,10 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function get_ai_base_sites( $request ) {
-		$this->get_license_keys();
 		$reload   = $request->get_param( self::PROP_FORCE_RELOAD );
+		$base_sites = Starter_Import_Processes::get_instance()->get_ai_base_sites( $reload );
 
-		$identifier = 'ai-base-templates' . KADENCE_STARTER_TEMPLATES_VERSION;
-
-		if ( ! empty( $this->api_key ) ) {
-			$identifier .= '_' . $this->api_key;
-		}
-
-		// Check if we have a local file.
-		if ( ! $reload ) {
-			try {
-				return rest_ensure_response( $this->block_library_cache->get( $identifier ) );
-			} catch ( NotFoundException $e ) {
-			}
-		}
-
-		$args = array(
-			'key'       => $this->api_key,
-			'site_url'  => $this->site_url,
-			'beta'      => defined( 'KADENCE_STARTER_TEMPLATES_BETA' ) && KADENCE_STARTER_TEMPLATES_BETA ? 'true' : 'false',
-		);
-		$api_url  = add_query_arg( $args, 'https://base.startertemplatecloud.com/wp-json/kadence-starter-base/v1/sites' );
-		// Get the response.
-		$response = wp_safe_remote_get(
-			$api_url,
-			array(
-				'timeout' => 20,
-			)
-		);
-		// Early exit if there was an error.
-		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
-			return new WP_Error( 'getting_ai_sites_failed', __( 'Failed to get AI Templates' ), array( 'status' => 500 ) );
-		}
-		// Get the CSS from our response.
-		$contents = wp_remote_retrieve_body( $response );
-
-		// Early exit if there was an error.
-		if ( is_wp_error( $contents ) ) {
-			return new WP_Error( 'getting_ai_sites_failed', __( 'Failed to get AI Templates' ), array( 'status' => 500 ) );
-		}
-
-		$this->block_library_cache->cache( $identifier, $contents );
-
-		return rest_ensure_response( $contents );
+		return rest_ensure_response( $base_sites );
 	}
 	/**
 	 * Retrieves remaining credits.
@@ -907,29 +894,10 @@ class Library_REST_Controller extends WP_REST_Controller {
 	public function get_all_local_ai_items( $request ) {
 		$this->get_license_keys();
 		$available_prompts = get_option( 'kb_design_library_prompts', array() );
+		
 		$return_data = array();
 		if ( ! empty( $available_prompts ) && is_array( $available_prompts ) ) {
-			foreach ( $available_prompts as $context => $prompt ) {
-				// Check local cache.
-				try {
-					$return_data[ $context ] = json_decode( $this->ai_cache->get( $available_prompts[ $context ] ), true );
-				} catch ( NotFoundException $e ) {
-					// Check if we have a remote file.
-					$response = $this->get_remote_job( $available_prompts[ $context ] );
-					$data     = json_decode( $response, true );
-					if ( $response === 'error' ) {
-						$has_error = true;
-					} else if ( $response === 'processing' || isset( $data['data']['status'] ) && 409 === $data['data']['status'] ) {
-						$ready = false;
-					} else if ( isset( $data['data']['status'] ) ) {
-						$has_error = true;
-					} else {
-						$this->ai_cache->cache( $available_prompts[ $context ], $response );
-
-						$return_data[ $context ] = $data;
-					}
-				}
-			}
+			$return_data = Starter_Import_Processes::get_instance()->get_all_local_ai_items( $available_prompts );
 		}
 		if ( ! empty( $return_data ) ) {
 			return rest_ensure_response( $return_data );
@@ -1715,10 +1683,23 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * @param WP_REST_Request $request Full details about the request.
 	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
 	 */
-	public function install_plugins( $request ) {
-		$plugins = $request->get_param( self::PROP_PLUGINS );
-		$import_key = $request->get_param( self::PROP_KEY );
-		update_option( '_kadence_starter_templates_last_import_data', array( $import_key ), 'no' );
+	public function install_plugin( $request ) {
+		$plugin_slug = $request->get_param( self::PROP_PLUGIN );
+		$importer_plugins = $this->get_allowed_plugins();
+		if ( ! isset( $importer_plugins[ $plugin_slug ] ) ) {
+			return new WP_Error( 'invalid_plugin', __( 'Invalid plugin.' ), array( 'status' => 500 ) );
+		}
+		$plugins = array( $plugin_slug );
+		$install = $this->install_plugins_from_array( $plugins );
+		if ( is_wp_error( $install ) ) {
+			return $install;
+		}
+		return rest_ensure_response( array( 'success' => true ) );
+	}
+	/**
+	 * Install Plugins from array.
+	 */
+	public function install_plugins_from_array( $plugins ) {
 		$install = true;
 		if ( ! empty( $plugins ) && is_array( $plugins ) ) {
 			$importer_plugins = $this->get_allowed_plugins();
@@ -1903,6 +1884,24 @@ class Library_REST_Controller extends WP_REST_Controller {
 		}
 		if ( false === $install ) {
 			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
+		}
+		return true;
+	}
+	/**
+	 * Install Plugins.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 */
+	public function install_plugins( $request ) {
+		$plugins = $request->get_param( self::PROP_PLUGINS );
+		$import_key = $request->get_param( self::PROP_KEY );
+		update_option( '_kadence_starter_templates_last_import_data', array( $import_key ), 'no' );
+		error_log( print_r( $plugins, true ) );
+		$install = $this->install_plugins_from_array( $plugins );
+		
+		if ( is_wp_error( $install ) ) {
+			return $install;
 		}
 
 		return rest_ensure_response( array( 'success' => true ) );
@@ -2151,257 +2150,12 @@ class Library_REST_Controller extends WP_REST_Controller {
 		if ( ! empty( $parameters['goals'] ) ) {
 			$install_goals = $parameters['goals'];
 		}
-		$install_goal = ( isset( $install_goals[0] ) ? $install_goals[0] : '' );
-		$url = 'https://base.startertemplatecloud.com/' . $site_id . '/wp-json/kadence-starter-base/v1/navigation';
-		$response = wp_safe_remote_get(
-			$url,
-			array(
-				'timeout' => 20,
-			)
-		);
-		// Early exit if there was an error.
-		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get navigation from source.' ), array( 'status' => 500 ) );
-		}
-
-		// Get the body from our response.
-		$navigation = wp_remote_retrieve_body( $response );
-
-		// Early exit if there was an error.
+		$navigation = Starter_Import_Processes::get_instance()->install_navigation( $site_id, $install_goals );
 		if ( is_wp_error( $navigation ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get navigation from source.' ), array( 'status' => 500 ) );
+			return rest_ensure_response( $navigation );
 		}
-		$navigation = json_decode( $navigation, true );
-		if ( ! is_array( $navigation ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get navigation from source.' ), array( 'status' => 500 ) );
-		}
-		$data = array();
-		foreach ( $navigation as $location_key => $menu ) {
-			$menu_exists = wp_get_nav_menu_object( $menu['name'] );
-			if ( $menu_exists ) {
-				wp_delete_nav_menu( $menu_exists->term_id );
-			}
-			$menu_id = wp_create_nav_menu( $menu['name'] );
-			$updates = array();
-			$extra_order = 0;
-			// Set up default menu items
-			foreach ( $menu['items'] as $item ) {
-				if ( 'Shop' === $item['title'] ) {
-					$extra_order = $item['menu_order'];
-					continue;
-				}
-				$args = array(
-					'menu-item-title' => $item['title'],
-					'menu-item-url' => '#',
-					'menu-item-status' => 'publish',
-					'menu-item-position' => $item['menu_order'],
-				);
-				// Lets not duplicate pages.
-				$has_page = get_posts( [
-					'post_type'  => 'page',
-					'title'      => $item['title'],
-				] );
-				if ( $has_page ) {
-					$args = array(
-						'menu-item-title' => get_the_title( $has_page[0]->ID ),
-						'menu-item-object-id' => $has_page[0]->ID,
-						'menu-item-object'    => 'page',
-						'menu-item-status'    => 'publish',
-						'menu-item-type'      => 'post_type',
-						'menu-item-position'  => $item['menu_order'],
-					);
-				} else if ( ! empty( $item['title'] ) && 'Blog' === $item['title'] ) {
-					// Create Blog page using wp_insert_post
-					$page_id = wp_insert_post(
-						array(
-						'post_title'   => wp_strip_all_tags( $item['title'] ),
-						'post_content' => '',
-						'post_status'  => 'publish',
-						'post_type'    => 'page',
-						)
-					);
-					if ( ! is_wp_error( $page_id ) ) {
-						$args = array(
-							'menu-item-title' => $item['title'],
-							'menu-item-object-id' => $page_id,
-							'menu-item-object'    => 'page',
-							'menu-item-status'    => 'publish',
-							'menu-item-type'      => 'post_type',
-							'menu-item-position'  => $item['menu_order'],
-						);
-						update_option( 'page_for_posts', $page_id );
-						update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
-					}
-				}
-				if ( ! empty( $item['menu_item_parent'] ) ) {
-					$args['menu-item-parent-id'] = $updates[ $item['menu_item_parent'] ];
-				}
-				$updates[ $item['id'] ] = wp_update_nav_menu_item(
-					$menu_id,
-					0,
-					$args
-				);
-			}
-			update_term_meta( $menu_id, '_kadence_starter_templates_imported_term', true );
-			if ( $location_key === 'primary' || $location_key === 'mobile' ) {
-				if ( 'events' === $install_goal && post_type_exists( 'tribe_events' ) ) {
-					$args = array(
-						'menu-item-title' => 'Events',
-						'menu-item-url' => get_post_type_archive_link( 'tribe_events' ),
-						'menu-item-status' => 'publish',
-						'menu-item-position'  => $extra_order,
-					);
-					$item_id = wp_update_nav_menu_item(
-						$menu_id,
-						0,
-						$args
-					);
-				} else if ( 'ecommerce' === $install_goal && class_exists( 'WooCommerce' ) ) {
-					$page_id   = wc_get_page_id( 'shop' );
-					$shop_page = get_post( $page_id );
-					if ( ! $shop_page ) {
-						// Create Shop page using wp_insert_post
-						$page_id = wp_insert_post(
-							array(
-							'post_title'   => 'Shop',
-							'post_content' => '',
-							'post_status'  => 'publish',
-							'post_type'    => 'page',
-							)
-						);
-						if ( ! is_wp_error( $page_id ) ) {
-							update_option( 'woocommerce_shop_page_id', $page_id );
-							update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
-						}
-					}
-					if ( ! empty( $page_id  ) && ! is_wp_error( $page_id ) ) {
-						$args = array(
-							'menu-item-title' => $item['title'],
-							'menu-item-object-id' => $page_id,
-							'menu-item-object'    => 'page',
-							'menu-item-status'    => 'publish',
-							'menu-item-type'      => 'post_type',
-							'menu-item-position'  => $extra_order,
-						);
-						$item_id = wp_update_nav_menu_item(
-							$menu_id,
-							0,
-							$args
-						);
-					}
-				} else if ( 'courses' === $install_goal && post_type_exists( 'sfwd-courses' ) ) {
-					// Lets not duplicate pages.
-					$has_page = get_posts( [
-						'post_type'  => 'page',
-						'title'      => 'Courses',
-					] );
-					if ( $has_page ) {
-						$args = array(
-							'menu-item-title' => get_the_title( $has_page[0]->ID ),
-							'menu-item-object-id' => $has_page[0]->ID,
-							'menu-item-object'    => 'page',
-							'menu-item-status'    => 'publish',
-							'menu-item-type'      => 'post_type',
-							'menu-item-position'  => $extra_order,
-						);
-					} else {
-						if ( defined( 'LEARNDASH_COURSE_GRID_VERSION' ) ) {
-							$page_content = '<!-- wp:learndash/ld-course-grid {"per_page":"12","thumbnail_size":"medium","ribbon":false,"title_clickable":true,"post_meta":false,"button":true,"pagination":"false","grid_height_equal":true,"progress_bar":true,"filter":false,"card":"grid-3","items_per_row":"3","font_family_title":"inter","font_family_description":"inter","font_size_title":"24px","font_size_description":"14px","font_color_description":"#4a4a68","id":"ld-cg-lxdnpir6oz","filter_search":false,"filter_price":false,"className":"home-course-grid"} /-->';
-							// Create Shop page using wp_insert_post
-							$page_id = wp_insert_post(
-								array(
-								'post_title'   => 'Courses',
-								'post_content' => $page_content,
-								'post_status'  => 'publish',
-								'post_type'    => 'page',
-								)
-							);
-							if ( ! is_wp_error( $page_id ) ) {
-								update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
-								$args = array(
-									'menu-item-title'     => 'Courses',
-									'menu-item-object-id' => $page_id,
-									'menu-item-object'    => 'page',
-									'menu-item-status'    => 'publish',
-									'menu-item-type'      => 'post_type',
-									'menu-item-position'  => $extra_order,
-								);
-								$item_id = wp_update_nav_menu_item(
-									$menu_id,
-									0,
-									$args
-								);
-							}
-						} else {
-							$args = array(
-								'menu-item-title' => 'Courses',
-								'menu-item-url' => get_post_type_archive_link( 'sfwd-courses' ),
-								'menu-item-status' => 'publish',
-								'menu-item-position'  => $extra_order,
-							);
-							$item_id = wp_update_nav_menu_item(
-								$menu_id,
-								0,
-								$args
-							);
-						}
-					}
-				}
-			}
-			$locations = get_theme_mod( 'nav_menu_locations' );
-			$locations[ $location_key ] = $menu_id;
-			set_theme_mod( 'nav_menu_locations', $locations );
-		}
-		// Make sure woocommerce pages are built and set.
-		if ( class_exists( 'WooCommerce' ) ) {
-			if ( is_callable( 'WC_Install::create_pages' ) ) {
-				WC_Install::create_pages();
-			}
-		}
-		flush_rewrite_rules();
+
 		return rest_ensure_response( 'updated' );
-	}
-	/**
-	 * Available widgets.
-	 *
-	 * Gather site's widgets into array with ID base, name, etc.
-	 *
-	 * @global array $wp_registered_widget_controls
-	 * @return array $available_widgets, Widget information
-	 */
-	private function available_widgets() {
-		global $wp_registered_widget_controls;
-
-		$widget_controls   = $wp_registered_widget_controls;
-		$available_widgets = array();
-
-		foreach ( $widget_controls as $widget ) {
-			if ( ! empty( $widget['id_base'] ) && ! isset( $available_widgets[ $widget['id_base'] ] ) ) {
-				$available_widgets[ $widget['id_base'] ]['id_base'] = $widget['id_base'];
-				$available_widgets[ $widget['id_base'] ]['name']    = $widget['name'];
-			}
-		}
-
-		return $available_widgets;
-	}
-	/**
-	 * Move footer widgets to inactive.
-	 */
-	public function move_widgets_to_inactive() {
-		// Get all widgets.
-		$sidebars_widgets = wp_get_sidebars_widgets();
-		// Check if the footer widget areas are set and not empty.
-		foreach ( array( 'sidebar-primary', 'sidebar-secondary', 'footer1', 'footer2', 'footer3', 'footer4', 'footer5', 'footer6' ) as $widget_area ) {
-			if ( ! empty( $sidebars_widgets[ $widget_area ] ) ) {
-				// Move all footer-1 widgets to inactive widgets.
-				foreach ( $sidebars_widgets[ $widget_area ] as $widget_id ) {
-					$sidebars_widgets['wp_inactive_widgets'][] = $widget_id;
-				}
-				$sidebars_widgets[ $widget_area ] = array();
-			}
-		}
-		// Save the updated widgets configuration.
-		wp_set_sidebars_widgets( $sidebars_widgets );
 	}
 	/**
 	 * Install Widgets.
@@ -2413,204 +2167,10 @@ class Library_REST_Controller extends WP_REST_Controller {
 		global $wp_registered_sidebars;
 		$site_id = $request->get_param( self::PROP_KEY );
 		$site_name = $request->get_param( self::PROP_CONTEXT );
-		$url = 'https://base.startertemplatecloud.com/' . $site_id . '/wp-json/kadence-starter-base/v1/widgets';
-		$response = wp_safe_remote_get(
-			$url,
-			array(
-				'timeout' => 20,
-			)
-		);
-		// Early exit if there was an error.
-		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get widgets from source.' ), array( 'status' => 500 ) );
-		}
+		$widgets = Starter_Import_Processes::get_instance()->install_widgets( $site_id , $site_name );
+		
 
-		// Get the body from our response.
-		$sidebars = wp_remote_retrieve_body( $response );
-		// Early exit if there was an error.
-		if ( empty( $sidebars ) ) {
-			return rest_ensure_response( 'no widgets to import' );
-		}
-		// Early exit if there was an error.
-		if ( is_wp_error( $sidebars ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get widgets from source.' ), array( 'status' => 500 ) );
-		}
-		$sidebars = json_decode( $sidebars, true );
-		if ( ! is_array( $sidebars ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get widgets from source.' ), array( 'status' => 500 ) );
-		}
-		$this->move_widgets_to_inactive();
-		// Get all available widgets site supports.
-		$available_widgets = $this->available_widgets();
-
-		// Begin results.
-		$results = array();
-		foreach ( $sidebars as $sidebar_id => $widgets ) {
-			// Skip inactive widgets (should not be in export).
-			if ( 'wp_inactive_widgets' == $sidebar_id ) {
-				continue;
-			}
-
-			// Check if sidebar is available on this site. Otherwise add widgets to inactive, and say so.
-			if ( isset( $wp_registered_sidebars[ $sidebar_id ] ) ) {
-				$sidebar_available    = true;
-				$use_sidebar_id       = $sidebar_id;
-				$sidebar_message_type = 'success';
-				$sidebar_message      = '';
-			} else {
-				$sidebar_available    = false;
-				$use_sidebar_id       = 'wp_inactive_widgets'; // Add to inactive if sidebar does not exist in theme.
-				$sidebar_message_type = 'error';
-				$sidebar_message      = __( 'Sidebar does not exist in theme (moving widget to Inactive)', 'kadence-starter-templates' );
-			}
-
-			// Result for sidebar.
-			$results[ $sidebar_id ]['name']         = ! empty( $wp_registered_sidebars[ $sidebar_id ]['name'] ) ? $wp_registered_sidebars[ $sidebar_id ]['name'] : $sidebar_id; // Sidebar name if theme supports it; otherwise ID.
-			$results[ $sidebar_id ]['message_type'] = $sidebar_message_type;
-			$results[ $sidebar_id ]['message']      = $sidebar_message;
-			$results[ $sidebar_id ]['widgets']      = array();
-
-			// Loop widgets.
-			foreach ( $widgets as $widget_instance_id => $widget ) {
-				$fail = false;
-
-				// Get id_base (remove -# from end) and instance ID number.
-				$id_base            = preg_replace( '/-[0-9]+$/', '', $widget_instance_id );
-				$instance_id_number = str_replace( $id_base . '-', '', $widget_instance_id );
-
-				// Does site support this widget?
-				if ( ! $fail && ! isset( $available_widgets[ $id_base ] ) ) {
-					$fail                = true;
-					$widget_message_type = 'error';
-					$widget_message      = __( 'Site does not support widget', 'kadence-starter-templates' ); // Explain why widget not imported.
-				}
-				// Convert multidimensional objects to multidimensional arrays.
-				// Some plugins like Jetpack Widget Visibility store settings as multidimensional arrays.
-				// Without this, they are imported as objects and cause fatal error on Widgets page.
-				$widget = json_decode( json_encode( $widget ), true );
-
-				// Filter to modify settings array.
-				$widget = apply_filters( 'kadence-starter-templates/rest_widget_settings_array', $widget );
-				// Skip (no changes needed), if this is not a custom menu widget.
-				if ( array_key_exists( 'nav_menu', $widget ) && ! empty( $widget['nav_menu'] ) && ! is_int( $widget['nav_menu'] ) ) {
-					$menu_exists = wp_get_nav_menu_object( $widget['nav_menu'] );
-					if ( $menu_exists ) {
-						$widget['nav_menu'] = $menu_exists->term_id;
-					}
-				}
-				if ( ! empty( $widget['content'] ) ) {
-					$widget['content'] = str_replace( 'Redwood', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Laurel', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Acorn', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Cedar', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Maple', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Sequoia', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Acacia', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Magnolia', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Willow', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Hemlock', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Fig', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Aspen', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Juniper', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Almond', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Elm', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Mahogany', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Oakleaf', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Olive', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Pinecone', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Birch', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Cherry', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Beech', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Cypress', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Fir', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Eucalyptus', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Banyan', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Ash', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Sycamore', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Palm', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Hawthorn', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Chestnut', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Mango', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Pecan', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Baobab', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Teak', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Apple', $site_name, $widget['content'] );
-					$widget['content'] = str_replace( 'Pear', $site_name, $widget['content'] );
-				}
-
-				// No failure.
-				if ( ! $fail ) {
-					// Add widget instance.
-					$single_widget_instances   = get_option( 'widget_' . $id_base ); // All instances for that widget ID base, get fresh every time.
-					$single_widget_instances   = ! empty( $single_widget_instances ) ? $single_widget_instances : array( '_multiwidget' => 1 ); // Start fresh if have to.
-					$single_widget_instances[] = $widget; // Add it.
-
-					// Get the key it was given.
-					end( $single_widget_instances );
-					$new_instance_id_number = key( $single_widget_instances );
-
-					// If key is 0, make it 1.
-					// When 0, an issue can occur where adding a widget causes data from other widget to load, and the widget doesn't stick (reload wipes it).
-					if ( '0' === strval( $new_instance_id_number ) ) {
-						$new_instance_id_number                           = 1;
-						$single_widget_instances[ $new_instance_id_number ] = $single_widget_instances[0];
-						unset( $single_widget_instances[0] );
-					}
-
-					// Move _multiwidget to end of array for uniformity.
-					if ( isset( $single_widget_instances['_multiwidget'] ) ) {
-						$multiwidget = $single_widget_instances['_multiwidget'];
-						unset( $single_widget_instances['_multiwidget'] );
-						$single_widget_instances['_multiwidget'] = $multiwidget;
-					}
-
-					// Update option with new widget.
-					update_option( 'widget_' . $id_base, $single_widget_instances );
-
-					// Assign widget instance to sidebar.
-					$sidebars_widgets = get_option( 'sidebars_widgets' ); // Which sidebars have which widgets, get fresh every time.
-
-					// Avoid rarely fatal error when the option is an empty string
-					// https://github.com/churchthemes/widget-importer-exporter/pull/11.
-					if ( ! $sidebars_widgets ) {
-						$sidebars_widgets = array();
-					}
-
-					$new_instance_id = $id_base . '-' . $new_instance_id_number; // Use ID number from new widget instance.
-					$sidebars_widgets[ $use_sidebar_id ][] = $new_instance_id; // Add new instance to sidebar.
-					update_option( 'sidebars_widgets', $sidebars_widgets ); // Save the amended data.
-
-					// After widget import action.
-					$after_widget_import = array(
-						'sidebar'           => $use_sidebar_id,
-						'sidebar_old'       => $sidebar_id,
-						'widget'            => $widget,
-						'widget_type'       => $id_base,
-						'widget_id'         => $new_instance_id,
-						'widget_id_old'     => $widget_instance_id,
-						'widget_id_num'     => $new_instance_id_number,
-						'widget_id_num_old' => $instance_id_number,
-					);
-
-					// Success message.
-					if ( $sidebar_available ) {
-						$widget_message_type = 'success';
-						$widget_message      = __( 'Imported', 'kadence-starter-templates' );
-					} else {
-						$widget_message_type = 'warning';
-						$widget_message      = __( 'Imported to Inactive', 'kadence-starter-templates' );
-					}
-				}
-
-				// Result for widget instance.
-				$results[ $sidebar_id ]['widgets'][ $widget_instance_id ]['name']         = isset( $available_widgets[ $id_base ]['name'] ) ? $available_widgets[ $id_base ]['name'] : $id_base; // Widget name or ID if name not available (not supported by site).
-				$results[ $sidebar_id ]['widgets'][ $widget_instance_id ]['title']        = ! empty( $widget['title'] ) ? $widget['title'] : __( 'No Title', 'kadence-starter-templates' ); // Show "No Title" if widget instance is untitled.
-				$results[ $sidebar_id ]['widgets'][ $widget_instance_id ]['message_type'] = $widget_message_type;
-				$results[ $sidebar_id ]['widgets'][ $widget_instance_id ]['message']      = $widget_message;
-
-			}
-		}
-		return rest_ensure_response( $results );
+		return rest_ensure_response( $widgets );
 	}
 	/**
 	 * Install Pages.
@@ -2625,420 +2185,13 @@ class Library_REST_Controller extends WP_REST_Controller {
 		if ( empty( $site_id ) ) {
 			return new WP_Error( 'instal_failed', __( 'No settings set.' ), array( 'status' => 500 ) );
 		}
-		$url = 'https://base.startertemplatecloud.com/' . $site_id . '/wp-json/kadence-starter-base/v1/settings';
-		$response = wp_safe_remote_get(
-			$url,
-			array(
-				'timeout' => 20,
-			)
-		);
-		// Early exit if there was an error.
-		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get settings from source.' ), array( 'status' => 500 ) );
+		$color_palette = ( !empty( $parameters['colors'] ) ? $parameters['colors'] : [] );
+		$dark_footer = ( !empty( $parameters['dark_footer'] ) ? $parameters['dark_footer'] : false );
+		$fonts = ( !empty( $parameters['fonts'] ) ? $parameters['fonts'] : [] );
+		$theme = Starter_Import_Processes::get_instance()->install_settings( $site_id, $site_name, $color_palette, $dark_footer, $fonts );
+		if ( is_wp_error( $theme ) ) {
+			return rest_ensure_response( $theme );
 		}
-
-		// Get the body from our response.
-		$settings = wp_remote_retrieve_body( $response );
-
-		// Early exit if there was an error.
-		if ( is_wp_error( $settings ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get settings from source.' ), array( 'status' => 500 ) );
-		}
-		$settings = json_decode( $settings, true );
-		if ( ! is_array( $settings ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get settings from source.' ), array( 'status' => 500 ) );
-		}
-
-		$data = array();
-		// Clear out the theme mods.
-		delete_option( 'theme_mods_' . get_option( 'stylesheet' ) );
-
-		if ( isset( $settings['mods'] ) ) {
-			$data['mods'] = $this->process_options_images( $settings['mods'] );
-		}
-		if ( isset( $settings['wp_css'] ) ) {
-			$data['wp_css'] = $settings['wp_css'];
-		}
-		if ( isset( $settings['options'] ) ) {
-			$keys = array_keys( $settings['options'] );
-			$keys = array_map( 'sanitize_key', $keys );
-
-			$values = array_values( $settings['options'] );
-			$values = array_map( 'sanitize_text_field', $values );
-
-			$options_array = array_combine( $keys, $values );
-			$data['options'] = $options_array;
-		}
-		// Set the site name.
-		if ( ! empty( $site_name ) ) {
-			update_option( 'blogname', $site_name );
-		}
-		// Import custom options.
-		if ( isset( $data['options'] ) && is_array( $data['options'] ) ) {
-			foreach ( $data['options'] as $option_key => $option_value ) {
-				update_option( $option_key, $option_value );
-			}
-		}
-
-		// Loop through the mods.
-		foreach ( $data['mods'] as $key => $val ) {
-			// Save the mod.
-			set_theme_mod( $key, $val );
-		}
-		if ( ! empty( $parameters['colors'] ) ) {
-			$colors = $parameters['colors'];
-			if ( ! empty( $colors['colors'] ) && is_array( $colors['colors'] ) ) {
-				$palette = get_option( 'kadence_global_palette' );
-				if ( ! empty( $palette ) ) {
-					$palette = json_decode( $palette, true );
-					$palette['palette'][0]['color'] = $colors['colors'][0];
-					$palette['palette'][1]['color'] = $colors['colors'][1];
-					$palette['palette'][2]['color'] = $colors['colors'][2];
-					$palette['palette'][3]['color'] = $colors['colors'][3];
-					$palette['palette'][4]['color'] = $colors['colors'][4];
-					$palette['palette'][5]['color'] = $colors['colors'][5];
-					$palette['palette'][6]['color'] = $colors['colors'][6];
-					$palette['palette'][7]['color'] = $colors['colors'][7];
-					$palette['palette'][8]['color'] = $colors['colors'][8];
-					$palette['active'] = 'palette';
-					update_option( 'kadence_global_palette', json_encode( $palette ) );
-				}
-				if ( ! empty( $colors['btnColor'] ) ) {
-					set_theme_mod(
-						'buttons_color',
-						array(
-							'color'  => $colors['btnColor'],
-							'hover'  => $colors['btnColor'],
-						)
-					);
-				}
-				if ( isset( $colors['isLight'] ) && ! $colors['isLight'] ) {
-					if ( isset( $parameters['dark_footer'] ) && $parameters['dark_footer'] ) {
-						$color_check = array(
-							'palette3',
-							'palette4',
-							'palette5',
-							'palette6',
-							'palette7',
-							'palette8',
-							'palette9',
-						);
-						$color_conversion = array(
-							'palette3' => 'palette7',
-							'palette4' => 'palette8',
-							'palette5' => 'palette9',
-							'palette6' => 'palette9',
-							'palette7' => 'palette6',
-							'palette8' => 'palette5',
-							'palette9' => 'palette4',
-						);
-						foreach ( array( 'footer_wrap_background', 'footer_top_background', 'footer_middle_background', 'footer_bottom_background' ) as $footer_area ) {
-							$footer_area_mod = get_theme_mod( $footer_area );
-							if ( ! empty( $footer_area_mod['desktop']['color'] ) && in_array( $footer_area_mod['desktop']['color'], $color_check ) ) {
-								$footer_area_mod['desktop']['color'] = $color_conversion[ $footer_area_mod['desktop']['color'] ];
-								set_theme_mod( $footer_area, $footer_area_mod );
-							}
-						}
-						foreach ( array( 'footer_top_widget_title', 'footer_top_widget_content', 'footer_middle_widget_title', 'footer_middle_widget_content', 'footer_bottom_widget_title', 'footer_bottom_widget_content', 'footer_html_typography' ) as $footer_title ) {
-							$footer_title_mod = get_theme_mod( $footer_title );
-							if ( ! empty( $footer_title_mod['color'] ) && in_array( $footer_title_mod['color'], $color_check ) ) {
-								$footer_title_mod['color'] = $color_conversion[ $footer_title_mod['color'] ];
-								set_theme_mod( $footer_title, $footer_title_mod );
-							}
-						}
-						foreach ( array( 'footer_top_widget_content_color', 'footer_middle_widget_content_color', 'footer_bottom_widget_content_color', 'footer_navigation_color', 'footer_navigation_background', 'footer_social_color', 'footer_social_background', 'footer_social_border_colors', 'footer_html_link_color' ) as $footer_color ) {
-							$footer_color_mod = get_theme_mod( $footer_color );
-							$update = false;
-							if ( ! empty( $footer_color_mod['color'] ) && in_array( $footer_color_mod['color'], $color_check ) ) {
-								$footer_color_mod['color'] = $color_conversion[ $footer_color_mod['color'] ];
-								$update = true;
-							}
-							if ( ! empty( $footer_color_mod['hover'] ) && in_array( $footer_color_mod['hover'], $color_check ) ) {
-								$footer_color_mod['hover'] = $color_conversion[ $footer_color_mod['hover'] ];
-								$update = true;
-							}
-							if ( ! empty( $footer_color_mod['active'] ) && in_array( $footer_color_mod['active'], $color_check ) ) {
-								$footer_color_mod['active'] = $color_conversion[ $footer_color_mod['active'] ];
-								$update = true;
-							}
-							if ( $update ) {
-								set_theme_mod( $footer_color, $footer_color_mod );
-							}
-						}
-						foreach ( array( 'footer_top_top_border', 'footer_top_bottom_border', 'footer_top_column_border', 'footer_middle_top_border', 'footer_middle_bottom_border', 'footer_middle_column_border', 'footer_bottom_top_border', 'footer_bottom_bottom_border', 'footer_bottom_column_border' ) as $footer_border ) {
-							$footer_border_mod = get_theme_mod( $footer_border );
-							$update = false;
-							if ( ! empty( $footer_border_mod['desktop']['color'] ) && in_array( $footer_border_mod['desktop']['color'], $color_check ) ) {
-								$footer_border_mod['desktop']['color'] = $color_conversion[ $footer_border_mod['desktop']['color'] ];
-								$update = true;
-							}
-							if ( ! empty( $footer_border_mod['tablet']['color'] ) && in_array( $footer_border_mod['tablet']['color'], $color_check ) ) {
-								$footer_border_mod['tablet']['color'] = $color_conversion[ $footer_border_mod['tablet']['color'] ];
-								$update = true;
-							}
-							if ( ! empty( $footer_border_mod['mobile']['color'] ) && in_array( $footer_border_mod['mobile']['color'], $color_check ) ) {
-								$footer_border_mod['mobile']['color'] = $color_conversion[ $footer_border_mod['mobile']['color'] ];
-								$update = true;
-							}
-							if ( $update ) {
-								set_theme_mod( $footer_border, $footer_border_mod );
-							}
-						}
-					}
-				}
-			}
-		}
-		// If wp_css is set then import it.
-		if ( function_exists( 'wp_update_custom_css_post' ) && isset( $data['wp_css'] ) && '' !== $data['wp_css'] ) {
-			wp_update_custom_css_post( $data['wp_css'] );
-		}
-		if ( ! empty( $parameters['fonts'] ) ) {
-			$fonts = $parameters['fonts'];
-			if ( ! empty( $fonts['font'] ) ) {
-				switch ( $fonts['font'] ) {
-					case 'montserrat':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Montserrat';
-						$current['google']  = true;
-						$current['variant'] = array( '100', '100italic', '200', '200italic', '300', '300italic', 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic', '800', '800italic', '900', '900italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Source Sans Pro';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'playfair':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Playfair Display';
-						$current['google']  = true;
-						$current['variant'] = array( 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic', '800', '800italic', '900', '900italic' );
-						set_theme_mod( 'heading_font', $current );
-						$h1_font = \Kadence\kadence()->option( 'h1_font' );
-						$h1_font['weight'] = 'normal';
-						$h1_font['variant'] = 'regualar';
-						set_theme_mod( 'h1_font', $h1_font );
-						$h2_font = \Kadence\kadence()->option( 'h2_font' );
-						$h2_font['weight'] = 'normal';
-						$h2_font['variant'] = 'regualar';
-						set_theme_mod( 'h2_font', $h2_font );
-						$h3_font = \Kadence\kadence()->option( 'h3_font' );
-						$h3_font['weight'] = 'normal';
-						$h3_font['variant'] = 'regualar';
-						set_theme_mod( 'h3_font', $h3_font );
-						$h4_font = \Kadence\kadence()->option( 'h4_font' );
-						$h4_font['weight'] = 'normal';
-						$h4_font['variant'] = 'regualar';
-						set_theme_mod( 'h4_font', $h4_font );
-						$h5_font = \Kadence\kadence()->option( 'h5_font' );
-						$h5_font['weight'] = 'normal';
-						$h5_font['variant'] = 'regualar';
-						set_theme_mod( 'h5_font', $h5_font );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Raleway';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'oswald':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Oswald';
-						$current['google']  = true;
-						$current['variant'] = array( '200', '300', 'regular', '500', '600', '700' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Open Sans';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'antic':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Antic Didone';
-						$current['google']  = true;
-						$current['variant'] = array( 'regular' );
-						set_theme_mod( 'heading_font', $current );
-						$h1_font = \Kadence\kadence()->option( 'h1_font' );
-						$h1_font['weight'] = 'normal';
-						$h1_font['variant'] = 'regualar';
-						set_theme_mod( 'h1_font', $h1_font );
-						$h2_font = \Kadence\kadence()->option( 'h2_font' );
-						$h2_font['weight'] = 'normal';
-						$h2_font['variant'] = 'regualar';
-						set_theme_mod( 'h2_font', $h2_font );
-						$h3_font = \Kadence\kadence()->option( 'h3_font' );
-						$h3_font['weight'] = 'normal';
-						$h3_font['variant'] = 'regualar';
-						set_theme_mod( 'h3_font', $h3_font );
-						$h4_font = \Kadence\kadence()->option( 'h4_font' );
-						$h4_font['weight'] = 'normal';
-						$h4_font['variant'] = 'regualar';
-						set_theme_mod( 'h4_font', $h4_font );
-						$h5_font = \Kadence\kadence()->option( 'h5_font' );
-						$h5_font['weight'] = 'normal';
-						$h5_font['variant'] = 'regualar';
-						set_theme_mod( 'h5_font', $h5_font );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Raleway';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'gilda':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Gilda Display';
-						$current['google']  = true;
-						$current['variant'] = array( 'regular' );
-						set_theme_mod( 'heading_font', $current );
-						$h1_font = \Kadence\kadence()->option( 'h1_font' );
-						$h1_font['weight'] = 'normal';
-						$h1_font['variant'] = 'regualar';
-						set_theme_mod( 'h1_font', $h1_font );
-						$h2_font = \Kadence\kadence()->option( 'h2_font' );
-						$h2_font['weight'] = 'normal';
-						$h2_font['variant'] = 'regualar';
-						set_theme_mod( 'h2_font', $h2_font );
-						$h3_font = \Kadence\kadence()->option( 'h3_font' );
-						$h3_font['weight'] = 'normal';
-						$h3_font['variant'] = 'regualar';
-						set_theme_mod( 'h3_font', $h3_font );
-						$h4_font = \Kadence\kadence()->option( 'h4_font' );
-						$h4_font['weight'] = 'normal';
-						$h4_font['variant'] = 'regualar';
-						set_theme_mod( 'h4_font', $h4_font );
-						$h5_font = \Kadence\kadence()->option( 'h5_font' );
-						$h5_font['weight'] = 'normal';
-						$h5_font['variant'] = 'regualar';
-						set_theme_mod( 'h5_font', $h5_font );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Raleway';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'cormorant':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Cormorant Garamond';
-						$current['google']  = true;
-						$current['variant'] = array( '300', '300italic', 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Proza Libre';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'libre':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Libre Franklin';
-						$current['google']  = true;
-						$current['variant'] = array( '100', '100italic', '200', '200italic', '300', '300italic', 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic', '800', '800italic', '900', '900italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Libre Baskerville';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-
-					case 'lora':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Lora';
-						$current['google']  = true;
-						$current['variant'] = array( 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic' );
-						set_theme_mod( 'heading_font', $current );
-						$h1_font = \Kadence\kadence()->option( 'h1_font' );
-						$h1_font['weight'] = 'normal';
-						$h1_font['variant'] = 'regualar';
-						set_theme_mod( 'h1_font', $h1_font );
-						$h2_font = \Kadence\kadence()->option( 'h2_font' );
-						$h2_font['weight'] = 'normal';
-						$h2_font['variant'] = 'regualar';
-						set_theme_mod( 'h2_font', $h2_font );
-						$h3_font = \Kadence\kadence()->option( 'h3_font' );
-						$h3_font['weight'] = 'normal';
-						$h3_font['variant'] = 'regualar';
-						set_theme_mod( 'h3_font', $h3_font );
-						$h4_font = \Kadence\kadence()->option( 'h4_font' );
-						$h4_font['weight'] = 'normal';
-						$h4_font['variant'] = 'regualar';
-						set_theme_mod( 'h4_font', $h4_font );
-						$h5_font = \Kadence\kadence()->option( 'h5_font' );
-						$h5_font['weight'] = 'normal';
-						$h5_font['variant'] = 'regualar';
-						set_theme_mod( 'h5_font', $h5_font );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Merriweather';
-						$body['google'] = true;
-						$body['weight'] = '300';
-						$body['variant'] = '300';
-						set_theme_mod( 'base_font', $body );
-						break;
-
-					case 'proza':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Proza Libre';
-						$current['google']  = true;
-						$current['variant'] = array( 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic', '800', '800italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Open Sans';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-
-					case 'worksans':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Work Sans';
-						$current['google']  = true;
-						$current['variant'] = array( '100', '100italic', '200', '200italic', '300', '300italic', 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic', '800', '800italic', '900', '900italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Work Sans';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-
-					case 'josefin':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Josefin Sans';
-						$current['google']  = true;
-						$current['variant'] = array( '100', '100italic', '200', '200italic', '300', '300italic', 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Lato';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-
-					case 'nunito':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Nunito';
-						$current['google']  = true;
-						$current['variant'] = array( '200', '200italic', '300', '300italic', 'regular', 'italic', '600', '600italic', '700', '700italic', '800', '800italic', '900', '900italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Roboto';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-					case 'rubik':
-						$current = \Kadence\kadence()->option( 'heading_font' );
-						$current['family']  = 'Rubik';
-						$current['google']  = true;
-						$current['variant'] = array( '300', '300italic', 'regular', 'italic', '500', '500italic', '600', '600italic', '700', '700italic', '800', '800italic', '900', '900italic' );
-						set_theme_mod( 'heading_font', $current );
-						$body = \Kadence\kadence()->option( 'base_font' );
-						$body['family'] = 'Karla';
-						$body['google'] = true;
-						set_theme_mod( 'base_font', $body );
-						break;
-				}
-			}
-		}
-		// Setup Learndash.
-		$this->setup_learndash();
-		// Check permalink settings:
-		$current_permalink_structure = get_option( 'permalink_structure' );
-
-		// Check if permalinks are set to default.
-		if ( empty( $current_permalink_structure ) ) {
-			update_option( 'permalink_structure', '/%postname%/' );
-		}
-
 		return rest_ensure_response( 'updated' );
 	}
 	/**
@@ -3222,31 +2375,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function get_remote_events( WP_REST_Request $request ) {
-		$url = 'https://base.startertemplatecloud.com/wp-json/kadence-starter-base/v1/events';
-		// Get the response.
-		$response = wp_safe_remote_get(
-			$url,
-			array(
-				'timeout' => 20,
-			)
-		);
-		// Early exit if there was an error.
-		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get events from source.' ), array( 'status' => 500 ) );
-		}
+		$events = Starter_Import_Processes::get_instance()->get_remote_events();
 
-		// Get the body from our response.
-		$posts = wp_remote_retrieve_body( $response );
-
-		// Early exit if there was an error.
-		if ( is_wp_error( $posts ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get events from source.' ), array( 'status' => 500 ) );
-		}
-		$posts = json_decode( $posts, true );
-		if ( ! is_array( $posts ) ) {
-			return new WP_Error( 'install_failed', __( 'Could not get events from source.' ), array( 'status' => 500 ) );
-		}
-		return rest_ensure_response( $posts );
+		return rest_ensure_response( $events );
 	}
 	/**
 	 * Install Events.
@@ -3259,79 +2390,13 @@ class Library_REST_Controller extends WP_REST_Controller {
 		if ( empty( $parameters['events'] ) ) {
 			return new WP_Error( 'no_events', __( 'No events to install.' ), array( 'status' => 500 ) );
 		}
-		$new_events    = array();
 		$events        = $parameters['events'];
 		$image_library    = isset( $parameters['image_library'] ) ? $parameters['image_library'] : '';
-		$variation = 1;
-		foreach ( $events as $event_data ) {
-			// Lets not duplicate products.
-			$has_event = get_posts( [
-				'post_type'  => 'tribe_events',
-				'title' => $event_data['title'],
-			] );
-			if ( $has_event ) {
-				$new_events[] = $has_event[0]->ID;
-				continue;
-			}
-			// Prepare Post content.
-			$category_ids  = $this->set_taxonomy_data( $event_data, 'categories', 'tribe_events_cat' );
-			$venue_ids     = $this->set_event_venue_data( $event_data );
-			$organizer_ids = $this->set_event_organizers_data( $event_data );
-			$downloaded_image = array();
-			if ( ! empty( $event_data['image'] ) ) {
-				$image            = array(
-					'url' => $event_data['image'],
-					'id'  => 0,
-				);
-				if ( substr( $event_data['image'], 0, strlen( 'https://images.pexels.com' ) ) === 'https://images.pexels.com' ) {
-					$image_data = $this->get_image_info( $image_library, $event_data['image'] );
-					if ( $image_data ) {
-						$alt                        = ! empty( $image_data['alt'] ) ? $image_data['alt'] : '';
-						$image['filename']          = ! empty( $image_data['filename'] ) ? $image_data['filename'] : $this->create_filename_from_alt( $alt );
-						$image['photographer']      = ! empty( $image_data['photographer'] ) ? $image_data['photographer'] : '';
-						$image['photographer_url']  = ! empty( $image_data['photographer_url'] ) ? $image_data['photographer_url'] : '';
-						$image['photograph_url']    = ! empty( $image_data['url'] ) ? $image_data['url'] : '';
-						$image['alt']               = $alt;
-						$image['title']             = __( 'Photo by', 'kadence-starter-templates' ) . ' ' . $image['photographer'];
-					}
-				}
-				$downloaded_image = $this->import_image( $image );
-			}
-			$date       = strtotime( '+' . (string)$variation .' months' );
-			$start_date = date( 'Y-m-d', $date );
-			$event_item = array(
-				'post_status'  => 'publish',
-				'post_title'   => ( isset( $event_data['title'] ) ? wp_strip_all_tags( $event_data['title'] ) : '' ),
-				'post_content' => $this->process_page_content( $event_data['content'], $image_library ),
-				'EventStartDate' => $start_date,
-				'EventStartMeridian' => 'pm',
-				'EventStartMinute' => '00',
-				'EventStartHour' => '01',
-				'EventEndMeridian' => 'pm',
-				'EventEndMinute' => '00',
-				'EventEndHour' => '05',
-				'EventEndDate' => $start_date,
-				'FeaturedImage' => ! empty( $downloaded_image['id'] ) ? $downloaded_image['id'] : '',
-				'EventCost' => '0',
-				'venue' => isset( $event_data['venues'][0] ) ? $event_data['venues'][0] : '',
-			);
-			$event_id = tribe_create_event( $event_item );
-			// Check for errors and handle them accordingly
-			if ( is_wp_error( $event_id ) ) {
-				return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
-			}
-			update_post_meta( $event_id, '_kadence_starter_templates_imported_post', true );
-			foreach ( $organizer_ids as $organizer_id ) {
-				add_post_meta( $event_id, '_EventOrganizerID', $organizer_id );
-			}
-			wp_set_post_terms( $event_id, $category_ids, 'tribe_events_cat' );
-			$new_events[] = $event_id;
-			$variation++;
+		$installed_events = Starter_Import_Processes::get_instance()->install_events( $events, $image_library);
+		if ( is_wp_error( $installed_events ) ) {
+			return rest_ensure_response( $installed_events );
 		}
-		if ( empty( $new_events ) ) {
-			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
-		}
-		return rest_ensure_response( $new_events );
+		return rest_ensure_response( $installed_events );
 	}
 	/**
 	 * Install Course.
@@ -3467,6 +2532,21 @@ class Library_REST_Controller extends WP_REST_Controller {
 		set_theme_mod( 'sfwd-lessons_content_style', 'unboxed' );
 
 		return;
+	}
+	/**
+	 * Install Donation Form.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 */
+	public function install_donation_form( WP_REST_Request $request ) {
+		$parameters = $request->get_json_params();
+		$form_data = isset( $parameters['formData'] ) ? $parameters['formData'] : [];
+		$installed_donation_form = Starter_Import_Processes::get_instance()->install_donation_form( $form_data );
+		if ( is_wp_error( $installed_donation_form ) ) {
+			return rest_ensure_response( $installed_donation_form );
+		}
+		return rest_ensure_response( [ 'success' => true, 'data' => $installed_donation_form ] );
 	}
 	/**
 	 * Install Products.
@@ -4412,6 +3492,11 @@ class Library_REST_Controller extends WP_REST_Controller {
 			'sanitize_callback' => array( $this, 'sanitize_plugins' ),
 			'validate_callback' => array( $this, 'validate_array' ),
 		);
+		$query_params[ self::PROP_PLUGIN ] = array(
+			'description'       => __( 'Import Plugin', 'kadence-starter-templates' ),
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+		);
 		$query_params[ self::PROP_INDUSTRY ] = array(
 			'description'       => __( 'The selected Industry', 'kadence-starter-templates' ),
 			'type'              => 'string',
@@ -5144,6 +4229,20 @@ class Library_REST_Controller extends WP_REST_Controller {
 				'base'  => 'better-wp-security',
 				'slug'  => 'better-wp-security',
 				'path'  => 'better-wp-security/better-wp-security.php',
+				'src'   => 'repo',
+			),
+			'ithemes-security-pro' => array(
+				'title' => 'Solid Security Pro',
+				'base'  => 'ithemes-security-pro',
+				'slug'  => 'ithemes-security-pro',
+				'path'  => 'ithemes-security-pro/ithemes-security-pro.php',
+				'src'   => 'thirdparty',
+			),
+			'wp-smtp' => array(
+				'title' => 'Solid Mail',
+				'base'  => 'wp-smtp',
+				'slug'  => 'wp-smtp',
+				'path'  => 'wp-smtp/wp-smtp.php',
 				'src'   => 'repo',
 			),
 		);

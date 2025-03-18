@@ -364,7 +364,6 @@ return array(
    'Stringable' => $strauss_src . '/symfony/polyfill-php80/Resources/stubs/Stringable.php',
    'Symfony\Polyfill\Php80\Php80' => $strauss_src . '/symfony/polyfill-php80/Php80.php',
    'Symfony\Polyfill\Ctype\Ctype' => $strauss_src . '/symfony/polyfill-ctype/Ctype.php',
-   'Symfony\Polyfill\Php72\Php72' => $strauss_src . '/symfony/polyfill-php72/Php72.php',
    'KadenceWP\KadenceStarterTemplates\Symfony\Contracts\Translation\TranslatableInterface' => $strauss_src . '/symfony/translation-contracts/TranslatableInterface.php',
    'KadenceWP\KadenceStarterTemplates\Symfony\Contracts\Translation\TranslatorInterface' => $strauss_src . '/symfony/translation-contracts/TranslatorInterface.php',
    'KadenceWP\KadenceStarterTemplates\Symfony\Contracts\Translation\LocaleAwareInterface' => $strauss_src . '/symfony/translation-contracts/LocaleAwareInterface.php',

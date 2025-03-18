@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Starter Templates by Kadence WP
  * Description: Launch a beautiful website with the power of AI or using our classic pre built style.
- * Version: 2.1.9
+ * Version: 2.2.0
  * Author: Kadence WP
  * Author URI: https://kadencewp.com/
  * Requires PHP: 7.4
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'KADENCE_STARTER_TEMPLATES_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KADENCE_STARTER_TEMPLATES_URL', trailingslashit( plugin_dir_url( __FILE__ ) ) );
-define( 'KADENCE_STARTER_TEMPLATES_VERSION', '2.1.9' );
+define( 'KADENCE_STARTER_TEMPLATES_VERSION', '2.2.0' );
 
 require_once plugin_dir_path( __FILE__ ) . 'vendor/vendor-prefixed/autoload.php';
 require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
@@ -32,6 +32,7 @@ use KadenceWP\KadenceStarterTemplates\StellarWP\ProphecyMonorepo\Container\Conta
 use KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\Config;
 use KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\Uplink;
 use KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\Register;
+use KadenceWP\KadenceStarterTemplates\CLI\CLI_Commands;
 
 /**
  * Load the plugin app.
@@ -68,6 +69,18 @@ function kadence_starter_templates_init() {
 		10,
 		0
 	);
+	require_once plugin_dir_path( __FILE__ ) . 'inc/class-starter-import-processes.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/cli/class-cli-commands.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-image-replacer.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-content-remover.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-woo-content-handler.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-color-handler.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-address-replacer.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-content-replacer.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/content-replace/class-donation-form-handler.php';
+	require_once plugin_dir_path( __FILE__ ) . 'inc/cli/class-plugin-installer.php';
+	// Initialize CLI Commands
+	new CLI_Commands();
 }
 add_action( 'plugins_loaded', 'kadence_starter_templates_init', 2 );
 

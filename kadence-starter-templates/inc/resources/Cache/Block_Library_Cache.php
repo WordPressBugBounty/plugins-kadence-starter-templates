@@ -88,7 +88,6 @@ class Block_Library_Cache implements Terminable {
 	 */
 	public function cache( $identifier, $data ): void {
 		$identifier = $this->filename( $identifier );
-
 		$this->items[ $identifier ] = $data;
 	}
 
