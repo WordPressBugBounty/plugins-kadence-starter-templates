@@ -239,7 +239,8 @@ class CLI_Commands {
 			'site_url'  => ( !empty( $license_data['site_url'] ) ? $license_data['site_url'] : '' ),
 		];
 		if ( empty( $args['key'] ) && 'live' === $env ) {
-			WP_CLI::error( 'No license key found.' );
+			WP_CLI::log( 'No license key found.' );
+			WP_CLI::halt( 0 );
 			return;
 		}
 		if ( 'dev' === $env ) {
@@ -258,24 +259,40 @@ class CLI_Commands {
 		);
 		// Early exit if there was an error.
 		if ( is_wp_error( $response ) ) {
-			WP_CLI::error( 'Failed to get import selection data: ' . $response->get_error_message() );
+			WP_CLI::log( 'Failed to get import selection data: ' . $response->get_error_message() );
+			WP_CLI::halt( 0 );
 			return;
 		}
 		if ( $this->is_response_code_error( $response ) ) {
-			WP_CLI::error( 'Failed to get import selection data, response code: ' . ( isset( $response['response']['code'] ) ? $response['response']['code'] : 'Unknown Response Code' ) );
-			return;
+			$response_code = (int) wp_remote_retrieve_response_code( $response );
+			if ( 501 === $response_code ) {
+				WP_CLI::log( 'Import selection data is not available for this license key.' );
+				WP_CLI::halt( 0 );
+				return;
+			} else {
+				$contents = wp_remote_retrieve_body( $response );
+				if ( ! empty( $contents ) ) {
+					$contents = json_decode( $contents, true );
+				}
+				$message  = isset( $contents['message'] ) ? $contents['message'] : 'Unknown Response Message';
+				WP_CLI::log( 'Failed to get import selection data, message: ' . $message );
+				WP_CLI::halt( 0 );
+				return;
+			}
 		}
 		// Get the CSS from our response.
 		$contents = wp_remote_retrieve_body( $response );
 
 		// Early exit if there was an error.
 		if ( is_wp_error( $contents ) ) {
-			WP_CLI::error( 'Failed to get import selection data: ' . $contents->get_error_message() );
+			WP_CLI::log( 'Failed to get import selection data: ' . $contents->get_error_message() );
+			WP_CLI::halt( 0 );
 			return;
 		}
 		$this->import_selection_data = json_decode( $contents, true );
 		if ( empty( $this->import_selection_data['ai_data']['template'] ) ) {
-			WP_CLI::error( 'No import selection data found.' );
+			WP_CLI::log( 'No import selection data found.' );
+			WP_CLI::halt( 0 );
 			return;
 		}
 		$this->import_key = $this->import_selection_data['ai_data']['template'];
@@ -285,17 +302,16 @@ class CLI_Commands {
 			unset( $this->import_selection_data['ai_data']['ai_request_id'] );
 		}
 		update_option( 'kadence_blocks_prophecy', wp_json_encode( $this->import_selection_data['ai_data'] ) );
-		$base_sites = Starter_Import_Processes::get_instance()->get_ai_base_sites();
-		if ( is_wp_error( $base_sites ) ) {
-			WP_CLI::error( 'Failed to get ai base sites: ' . $base_sites->get_error_message() );
+		$base_site = Starter_Import_Processes::get_instance()->get_ai_base_site( $this->import_key );
+		if ( is_wp_error( $base_site ) ) {
+			WP_CLI::error( 'Failed to get ai base site: ' . $base_site->get_error_message() );
 			return;
 		}
-		$this->import_base_sites = $base_sites;
-		if ( ! isset( $this->import_base_sites[$this->import_key] ) ) {
+		if ( ! isset( $base_site[$this->import_key] ) ) {
 			WP_CLI::error( 'No import base site found.' );
 			return;
 		}
-		$this->import_base_site = $this->import_base_sites[$this->import_key];
+		$this->import_base_site = $base_site[$this->import_key];
 		// Get the ai content.
 		if ( ! empty( $this->import_selection_data['ai_jobs'] ) && is_array( $this->import_selection_data['ai_jobs'] ) ) {
 			$ai_data = Starter_Import_Processes::get_instance()->get_all_local_ai_items( $this->import_selection_data['ai_jobs'], $auth );
@@ -506,7 +522,8 @@ class CLI_Commands {
 			$images = $this->import_selection_data['ai_data']['imageCollection'];
 		}
 		$site_name = ( !empty( $this->import_selection_data['ai_data']['companyName'] ) ? $this->import_selection_data['ai_data']['companyName'] : 'GiveWP' );
-		$give_form = Starter_Import_Processes::get_instance()->install_give_form( $this->ai_content, $images, $site_name );
+		$primary_color = ( !empty( $this->import_selection_data['ai_data']['colorPalette']['colors'][0] ) ? $this->import_selection_data['ai_data']['colorPalette']['colors'][0] : '' );
+		$give_form = Starter_Import_Processes::get_instance()->install_give_form( $this->ai_content, $images, $site_name, $primary_color );
 		if ( is_wp_error( $give_form ) ) {
 			WP_CLI::error( 'Failed to install give form: ' . $give_form->get_error_message() );
 			return;
@@ -567,7 +584,8 @@ class CLI_Commands {
 		$color_palette = ( !empty( $this->import_selection_data['ai_data']['colorPalette'] ) ? $this->import_selection_data['ai_data']['colorPalette'] : [] );
 		$dark_footer = ( !empty( $this->import_selection_data['ai_data']['darkFooter'] ) ? $this->import_selection_data['ai_data']['darkFooter'] : false );
 		$fonts = ( !empty( $this->import_selection_data['ai_data']['fontPair'] ) ? $this->import_selection_data['ai_data']['fontPair'] : [] );
-		$theme = Starter_Import_Processes::get_instance()->install_settings( $this->import_key, $site_name, $color_palette, $dark_footer, $fonts );
+		$donation_form_id = ( !empty( $this->give_form_id ) ? $this->give_form_id : '' );
+		$theme = Starter_Import_Processes::get_instance()->install_settings( $this->import_key, $site_name, $color_palette, $dark_footer, $fonts, $donation_form_id );
 		if ( is_wp_error( $theme ) ) {
 			WP_CLI::error( 'Failed to install theme: ' . $theme->get_error_message() );
 			return;

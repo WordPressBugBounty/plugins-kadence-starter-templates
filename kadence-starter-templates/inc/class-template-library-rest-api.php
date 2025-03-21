@@ -599,6 +599,18 @@ class Library_REST_Controller extends WP_REST_Controller {
 		);
 		register_rest_route(
 			$this->namespace,
+			'/install-block-cpt',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'install_block_cpt' ),
+					'permission_callback' => array( $this, 'get_items_permission_check' ),
+					'args'                => $this->get_collection_params(),
+				),
+			)
+		);
+		register_rest_route(
+			$this->namespace,
 			'/install-settings',
 			array(
 				array(
@@ -1786,7 +1798,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 							$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
 							$installed = $upgrader->install( $api->download_link );
 							if ( $installed ) {
-								$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+								$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 								if ( 'give' === $base ) {
 									add_option( 'give_install_pages_created', 1, '', false );
 								}
@@ -1815,7 +1827,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 							$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
 							$installed = $upgrader->install( $download_link );
 							if ( $installed ) {
-								$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+								$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 								if ( 'give' === $base ) {
 									add_option( 'give_install_pages_created', 1, '', false );
 								}
@@ -1836,7 +1848,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 						if ( ! current_user_can( 'install_plugins' ) ) {
 							return new WP_Error( 'install_failed', __( 'Permissions Issue.' ), array( 'status' => 500 ) );
 						}
-						$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+						$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 						if ( 'give' === $base ) {
 							// Make sure give doesn't add it's pages, prevents having two sets.
 							update_option( 'give_install_pages_created', 1, '', false );
@@ -1897,7 +1909,6 @@ class Library_REST_Controller extends WP_REST_Controller {
 		$plugins = $request->get_param( self::PROP_PLUGINS );
 		$import_key = $request->get_param( self::PROP_KEY );
 		update_option( '_kadence_starter_templates_last_import_data', array( $import_key ), 'no' );
-		error_log( print_r( $plugins, true ) );
 		$install = $this->install_plugins_from_array( $plugins );
 		
 		if ( is_wp_error( $install ) ) {
@@ -2173,6 +2184,24 @@ class Library_REST_Controller extends WP_REST_Controller {
 		return rest_ensure_response( $widgets );
 	}
 	/**
+	 * Install Forms.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 */
+	public function install_block_cpt( WP_REST_Request $request ) {
+		$parameters = $request->get_json_params();
+		$block_cpts = ( !empty( $parameters['block_cpts'] ) ? $parameters['block_cpts'] : [] );
+		if ( empty( $block_cpts ) ) {
+			return new WP_Error( 'instal_failed', __( 'No block cpts set.' ), array( 'status' => 500 ) );
+		}
+		$block_ids = Starter_Import_Processes::get_instance()->install_block_cpts( $block_cpts );
+		if ( is_wp_error( $block_ids ) ) {
+			return rest_ensure_response( $block_ids );
+		}
+		return rest_ensure_response( $block_ids );
+	}
+	/**
 	 * Install Pages.
 	 *
 	 * @param WP_REST_Request $request Full details about the request.
@@ -2188,7 +2217,8 @@ class Library_REST_Controller extends WP_REST_Controller {
 		$color_palette = ( !empty( $parameters['colors'] ) ? $parameters['colors'] : [] );
 		$dark_footer = ( !empty( $parameters['dark_footer'] ) ? $parameters['dark_footer'] : false );
 		$fonts = ( !empty( $parameters['fonts'] ) ? $parameters['fonts'] : [] );
-		$theme = Starter_Import_Processes::get_instance()->install_settings( $site_id, $site_name, $color_palette, $dark_footer, $fonts );
+		$donation_form_id = ( !empty( $parameters['donation_form_id'] ) ? $parameters['donation_form_id'] : '' );
+		$theme = Starter_Import_Processes::get_instance()->install_settings( $site_id, $site_name, $color_palette, $dark_footer, $fonts, $donation_form_id );
 		if ( is_wp_error( $theme ) ) {
 			return rest_ensure_response( $theme );
 		}

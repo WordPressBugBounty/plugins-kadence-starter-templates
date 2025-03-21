@@ -30,6 +30,10 @@ use Give\DonationForms\Models\DonationForm;
 use Give\FormBuilder\Actions\GenerateDefaultDonationFormBlockCollection;
 use Give\DonationForms\ValueObjects\DonationFormStatus;
 use Give\DonationForms\Properties\FormSettings;
+use Give\Campaigns\Models\Campaign;
+use Give\Campaigns\ValueObjects\CampaignGoalType;
+use Give\Campaigns\ValueObjects\CampaignStatus;
+use Give\Campaigns\ValueObjects\CampaignType;
 use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Server;
@@ -317,7 +321,57 @@ class Starter_Import_Processes {
 		$this->ai_cache            = kadence_starter_templates()->get( Ai_Cache::class );
 		$this->cache_primer        = kadence_starter_templates()->get( Cache_Primer::class );
 	}
+	/**
+	 * Retrieves a collection of objects.
+	 *
+	 * @param bool $reload Whether to reload the data.
+	 * @return string The contents.
+	 */
+	public function get_ai_base_site( $site_id, $reload = false ) {
+		$this->get_license_keys();
 
+		$identifier = 'ai-base-site-' . $site_id . KADENCE_STARTER_TEMPLATES_VERSION;
+
+		if ( ! empty( $this->api_key ) ) {
+			$identifier .= '_' . $this->api_key;
+		}
+
+		// Check if we have a local file.
+		if ( ! $reload ) {
+			try {
+				return json_decode( $this->block_library_cache->get( $identifier ), true );
+			} catch ( NotFoundException $e ) {
+			}
+		}
+
+		$args = array(
+			'key'       => $this->api_key,
+			'site_url'  => $this->site_url,
+		);
+		$api_url  = add_query_arg( $args, 'https://base.startertemplatecloud.com/' . $site_id . '/wp-json/kadence-starter-base/v1/single-site' );
+		// Get the response.
+		$response = wp_safe_remote_get(
+			$api_url,
+			array(
+				'timeout' => 30,
+			)
+		);
+		// Early exit if there was an error.
+		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
+			return new WP_Error( 'getting_ai_sites_failed', __( 'Failed to get AI Template' ), array( 'status' => 500 ) );
+		}
+		// Get the CSS from our response.
+		$contents = wp_remote_retrieve_body( $response );
+
+		// Early exit if there was an error.
+		if ( is_wp_error( $contents ) ) {
+			return new WP_Error( 'getting_ai_sites_failed', __( 'Failed to get AI Template' ), array( 'status' => 500 ) );
+		}
+
+		$this->block_library_cache->cache( $identifier, $contents );
+
+		return json_decode( $contents, true );
+	}
 	/**
 	 * Retrieves a collection of objects.
 	 *
@@ -1010,7 +1064,7 @@ class Starter_Import_Processes {
 							$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
 							$installed = $upgrader->install( $api->download_link );
 							if ( $installed ) {
-								$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+								$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 								if ( 'give' === $base ) {
 									add_option( 'give_install_pages_created', 1, '', false );
 								}
@@ -1039,7 +1093,7 @@ class Starter_Import_Processes {
 							$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
 							$installed = $upgrader->install( $download_link );
 							if ( $installed ) {
-								$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+								$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 								if ( 'give' === $base ) {
 									add_option( 'give_install_pages_created', 1, '', false );
 								}
@@ -1060,7 +1114,7 @@ class Starter_Import_Processes {
 						if ( ! current_user_can( 'install_plugins' ) ) {
 							return new WP_Error( 'install_failed', __( 'Permissions Issue.' ), array( 'status' => 500 ) );
 						}
-						$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+						$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 						if ( 'give' === $base ) {
 							// Make sure give doesn't add it's pages, prevents having two sets.
 							update_option( 'give_install_pages_created', 1, '', false );
@@ -1827,7 +1881,7 @@ class Starter_Import_Processes {
 	 * @param WP_REST_Request $request Full details about the request.
 	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
 	 */
-	public function install_settings( $site_id, $site_name, $color_palette, $dark_footer, $fonts ) {
+	public function install_settings( $site_id, $site_name, $color_palette, $dark_footer, $fonts, $donation_form_id = '' ) {
 		if ( empty( $site_id ) ) {
 			return new WP_Error( 'instal_failed', __( 'No settings set.' ), array( 'status' => 500 ) );
 		}
@@ -1879,17 +1933,25 @@ class Starter_Import_Processes {
 		if ( ! empty( $site_name ) ) {
 			update_option( 'blogname', $site_name );
 		}
+		$primary_color = '';
 		// Import custom options.
 		if ( isset( $data['options'] ) && is_array( $data['options'] ) ) {
 			foreach ( $data['options'] as $option_key => $option_value ) {
 				update_option( $option_key, $option_value );
+				if ( 'kadence_global_palette' === $option_key ) {
+					$palette = json_decode( $option_value, true );
+					$active = ( ! empty($palette['active'] ) ? $palette['active'] : 'palette' );
+					$primary_color = ( ! empty( $palette[$active][0]['color'] ) ? $palette[$active][0]['color'] : '' );
+				}
 			}
 		}
-
 		// Loop through the mods.
 		foreach ( $data['mods'] as $key => $val ) {
 			// Save the mod.
 			set_theme_mod( $key, $val );
+		}
+		if ( empty( $color_palette['colors'] ) && ! empty( $primary_color ) && ! empty( $donation_form_id ) ) {
+			$this->update_donation_form_primary_color( $primary_color, $donation_form_id );
 		}
 		if ( ! empty( $color_palette ) ) {
 			if ( ! empty( $color_palette['colors'] ) && is_array( $color_palette['colors'] ) ) {
@@ -2679,23 +2741,60 @@ class Starter_Import_Processes {
 			return 'none';
 		}
 		$site_name = ( !empty( $form_data['companyName'] ) ? $form_data['companyName'] : 'GiveWP' );
-		$form = DonationForm::create([
-			'title' => $site_name . ' - ' . __('Donation Form', 'kadence-starter-templates'),
-			'status' => DonationFormStatus::PUBLISHED(),
-			'settings' => FormSettings::fromArray([
-				'enableDonationGoal' => true,
-				'goalAmount' => 1000,
-				'designId' => 'multi-step',
-				'showHeading' => true,
-                'showDescription' => true,
-				'heading' => $form_data['heading'],
-                'description' => $form_data['description'],
-				'image' => !empty( $form_data['image'] ) ? $form_data['image'] : '',
-				'primaryColor' => 'var(--global-palette-btn-bg)',
-			]),
-			'blocks' => (new GenerateDefaultDonationFormBlockCollection())(),
-		]);
-		$form->save();
+		$form_args = [
+			'enableDonationGoal' => true,
+			'goalAmount' => 1000,
+			'designId' => 'multi-step',
+			'showHeading' => true,
+			'showDescription' => true,
+			'formTitle' => $site_name . ' - ' . __('Donation Form', 'kadence-starter-templates'),
+			'heading' => $form_data['heading'],
+			'description' => $form_data['description'],
+			'formStatus' => DonationFormStatus::PUBLISHED(),
+		];
+		if ( !empty( $form_data['primaryColor'] ) ) {
+			$form_args['primaryColor'] = $form_data['primaryColor'];
+		}
+		if ( ! empty( $form_data['type'] ) && $form_data['type'] === 'image' && ! empty( $form_data['image'] ) ) {
+			$form_args['designSettingsImageUrl'] = $form_data['image'];
+			$form_args['designSettingsImageStyle'] = 'above';
+			$form_args['designSettingsImageAlt'] = $form_data['heading'];
+		}
+		if ( version_compare( GIVE_VERSION, '4.0.0', '<' ) ) {
+			$form = DonationForm::create([
+				'title' => $site_name . ' - ' . __('Donation Form', 'kadence-starter-templates'),
+				'status' => DonationFormStatus::PUBLISHED(),
+				'settings' => FormSettings::fromArray($form_args),
+				'blocks' => (new GenerateDefaultDonationFormBlockCollection())(),
+			]);
+		} else {
+			$campaign_args = [
+				'type' => CampaignType::CORE(),
+				'title' => $site_name . ' - ' . __('Donation Campaign', 'kadence-starter-templates'),
+				'shortDescription' => $form_data['description'],
+				'longDescription' => '',
+				'logo' => '',
+				'image' => '',
+				'primaryColor' => '#0b72d9',
+            	'secondaryColor' => '#27ae60',
+				'goal' => 1000,
+            	'goalType' => CampaignGoalType::AMOUNT(),
+            	'status' => CampaignStatus::ACTIVE(),
+			];
+			
+			if ( ! empty( $form_data['image'] ) ) {
+				$campaign_args['image'] = $form_data['image'];
+			}
+			if ( !empty( $form_data['primaryColor'] ) ) {
+				$campaign_args['primaryColor'] = $form_data['primaryColor'];
+			}
+			$campaign = Campaign::create( $campaign_args );
+			$form = DonationForm::find($campaign->defaultFormId);
+			$form->title = $site_name . ' - ' . __('Donation Form', 'kadence-starter-templates');
+            $form->status = DonationFormStatus::PUBLISHED();
+			$form->settings = FormSettings::fromArray($form_args);
+			$form->save();
+		}
 		if ( ! isset( $form->id ) ) {
 			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
 		}
@@ -2703,12 +2802,33 @@ class Starter_Import_Processes {
 		return $form->id;
 	}
 	/**
+	 * Update Donation Form Primary Color.
+	 *
+	 * @param string $primary_color The primary color to update.
+	 * @param string $form_id The form id to update.
+	 *
+	 */
+	public function update_donation_form_primary_color( $primary_color, $form_id ) {
+		if ( empty( $primary_color ) || empty( $form_id ) ) {
+			return;
+		}
+		if ( ! class_exists( '\Give' ) ) {
+			return;
+		}
+		$form = DonationForm::find( $form_id );
+		if ( ! $form ) {
+			return;
+		}
+		$form->settings->primaryColor = $primary_color;
+		$form->save();
+	}
+	/**
 	 * Install Give Form.
 	 *
 	 * @param array $image_library The image library to use.
 	 * @return string/WP_Error The form.
 	 */
-	public function install_give_form( $ai_content, $image_library, $site_name = '' ) {
+	public function install_give_form( $ai_content, $image_library, $site_name = '', $primary_color = '' ) {
 		if ( ! class_exists( '\Give' ) ) {
 			return 'none';
 		}
@@ -2724,6 +2844,9 @@ class Starter_Import_Processes {
 		);
 		$form_data = json_decode($form_data, true);
 		$form_data['companyName'] = $site_name;
+		if ( ! empty( $primary_color ) ) {
+			$form_data['primaryColor'] = $primary_color;
+		}
 		// $image = Image_Replacer::replace_images(
 		// 	'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-1024x793.jpg',
 		// 	$image_library,
@@ -2954,6 +3077,41 @@ class Starter_Import_Processes {
 		set_theme_mod( 'sfwd-lessons_content_style', 'unboxed' );
 
 		return;
+	}
+	/**
+	 * Install Block CPT.
+	 *
+	 * @param array $block_cpt Block CPT.
+	 * @return array/WP_Error The block cpt.
+	 */
+	public function install_block_cpt( $block_cpt ) {
+		if ( empty( $block_cpt ) ) {
+			return new WP_Error( 'no_block_cpt', __( 'No block cpt to install.' ), array( 'status' => 500 ) );
+		}
+		$block_id = wp_insert_post( $block_cpt );
+		if ( is_wp_error( $block_id ) ) {
+			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
+		}
+		return $block_id;
+	}
+	/**
+	 * Install Block CPTs.
+	 *
+	 * @param array $block_cpts Block CPTs.
+	 * @return array/WP_Error The block cpts.
+	 */
+	public function install_block_cpts( $block_cpts ) {
+		if ( empty( $block_cpts ) ) {
+			return new WP_Error( 'no_block_cpts', __( 'No block cpts to install.' ), array( 'status' => 500 ) );
+		}
+		$block_ids = array();
+		foreach ( $block_cpts as $block_cpt ) {
+			$block_ids[] = $this->install_block_cpt( $block_cpt );
+		}
+		if ( empty( $block_ids ) ) {
+			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
+		}
+		return $block_ids;
 	}
 	
 	/**
@@ -3267,7 +3425,7 @@ class Starter_Import_Processes {
 				if ( ! is_wp_error( $category_term ) && ! empty( $category_term->term_id ) ) {
 					$category_ids[] = $category_term->term_id;
 					update_term_meta( $category_term->term_id, '_kadence_starter_templates_imported_term', true );
-				} else if ( ! empty( $category_term['term_id'] ) ) {
+				} else if ( ! is_wp_error( $category_term ) && ! empty( $category_term['term_id'] ) ) {
 					$category_ids[] = $category_term['term_id'];
 				}
 			}

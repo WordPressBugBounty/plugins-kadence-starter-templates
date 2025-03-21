@@ -49,7 +49,7 @@ class Plugin_Installer {
 				}
 				if ( $plugin_path ) {
 					$path = $plugin_path;
-					$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+					$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 					if ( 'give' === $base ) {
 						add_option( 'give_install_pages_created', 1, '', false );
 					}
@@ -114,7 +114,7 @@ class Plugin_Installer {
 								if ( 'restrict-content' === $base ) {
 									update_option( 'rcp_install_pages_created', current_time( 'mysql' ) );
 								}
-								$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+								$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 								$activate = activate_plugin( $path, '', false, $silent );
 								if ( is_wp_error( $activate ) ) {
 									$install = false;
@@ -130,7 +130,7 @@ class Plugin_Installer {
 					}
 				}
 			} elseif ( 'installed' === $state ) {
-				$silent = ( 'give' === $base || 'elementor' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
+				$silent = ( 'give' === $base || 'elementor' === $base || 'wp-smtp' === $base || 'fluentform' === $base || 'restrict-content' === $base ? false : true );
 				if ( 'give' === $base ) {
 					// Make sure give doesn't add it's pages, prevents having two sets.
 					update_option( 'give_install_pages_created', 1, '', false );
