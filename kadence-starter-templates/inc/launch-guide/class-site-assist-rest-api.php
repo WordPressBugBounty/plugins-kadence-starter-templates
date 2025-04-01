@@ -128,6 +128,12 @@ class Site_Assist_REST_Controller extends WP_REST_Controller {
 	 */
 	private $api_email = '';
 	/**
+	 * Environment.
+	 *
+	 * @var string
+	 */
+	private $env = '';
+	/**
 	 * API email for kadence membership
 	 *
 	 * @var string
@@ -494,7 +500,9 @@ class Site_Assist_REST_Controller extends WP_REST_Controller {
 			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', 'kadence-starter-templates' ),
 			'product_version' => KADENCE_STARTER_TEMPLATES_VERSION,
 		];
-
+		if ( ! empty( $this->env ) ) {
+			$defaults['env'] = $this->env;
+		}
 		$parsed_args = wp_parse_args( $args, $defaults );
 
 		return base64_encode( json_encode( $parsed_args ) );
@@ -647,6 +655,9 @@ class Site_Assist_REST_Controller extends WP_REST_Controller {
 				'site_url'  => $this->site_url,
 			]
 		);
+		if ( ! empty( $this->env ) ) {
+			$args['env'] = $this->env;
+		}
 		// Get the response.
 		$api_url  = add_query_arg( $args, $this->remote_url );
 		$response = wp_safe_remote_get(
@@ -846,7 +857,25 @@ class Site_Assist_REST_Controller extends WP_REST_Controller {
 		if ( ! empty( $data['site_url'] ) ) {
 			$this->site_url = $data['site_url'];
 		}
+		if ( ! empty( $data['env'] ) ) {
+			$this->env = $data['env'];
+		}
 		return $data;
+	}
+	/**
+	 * Get the current environment.
+	 */
+	public function get_current_env() {
+		if ( defined( 'STELLARWP_UPLINK_API_BASE_URL' ) ) {
+			switch ( STELLARWP_UPLINK_API_BASE_URL ) {
+				case 'https://licensing-dev.stellarwp.com':
+					return 'dev';
+				case 'https://licensing-staging.stellarwp.com':
+					return 'staging';
+					
+			}
+		}
+		return '';
 	}
 	/**
 	 * Get the current license key for the plugin.
@@ -868,6 +897,7 @@ class Site_Assist_REST_Controller extends WP_REST_Controller {
 			'api_key'   => $this->get_current_license_key(),
 			'api_email' => '',
 			'site_url'  => get_original_domain(),
+			'env'       => $this->get_current_env(),
 		];
 	}
 }

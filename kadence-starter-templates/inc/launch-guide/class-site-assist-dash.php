@@ -338,7 +338,7 @@ class Site_Assist_Dash {
 		}
 		return [
 			'title'       => __( 'Donation Form Setup', 'kadence-starter-templates' ),
-			'description' => __( 'Setup a donation form to make sure you have a way to collect donations.', 'kadence-starter-templates' ),
+			'description' => __( 'Set up a donation form to make sure you have a way to collect donations.', 'kadence-starter-templates' ),
 			'slug'        => 'donation-setup',
 			'tasks'       => [
 				[
@@ -434,7 +434,7 @@ class Site_Assist_Dash {
 
 		$return_data =[
 			'title'       => __( 'Site Security Setup', 'kadence-starter-templates' ),
-			'description' => __( 'Setup important security standards to prevent hacks and malware.', 'kadence-starter-templates' ),
+			'description' => __( 'Set up important security standards to prevent hacks and malware.', 'kadence-starter-templates' ),
 			'slug'        => 'site-security',
 			'tasks'       => [
 				[
@@ -448,9 +448,9 @@ class Site_Assist_Dash {
 					'enables'      => 'next',
 				],
 				[
-					'title'       =>  __( 'Setup Security plugin', 'kadence-starter-templates' ),
+					'title'       =>  __( 'Set Up Security plugin', 'kadence-starter-templates' ),
 					'description' => __( 'Complete the one-time setup of the security plugin.', 'kadence-starter-templates' ),
-					'button'      => $security_data['plugin_setup'] ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+					'button'      => $security_data['plugin_setup'] ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 					'link'        => $security_data['plugin_setup'] ? admin_url( 'admin.php?page=itsec&path=%2Fsettings%2Fglobal' ) : admin_url( 'admin.php?page=itsec&path=%2Fonboard%2Fsite-type' ),
 					'completed'    => $security_data['plugin_setup'],
 					'requires'    => 'active' === $security_data['plugin_state'] ? false : true,
@@ -459,7 +459,7 @@ class Site_Assist_Dash {
 				[
 					'title'       => __( '(Recommended) Enable Two Factor Login Authentication', 'kadence-starter-templates' ),
 					'description' => __( 'Two-Factor Authentication greatly increases the security of your WordPress user account by requiring an additional code along with your username and password to log in.', 'kadence-starter-templates' ),
-					'button'      => ! empty( $security_data['two_factor'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+					'button'      => ! empty( $security_data['two_factor'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 					'link'        => admin_url( 'admin.php?page=itsec&path=%2Fsettings%2Fconfigure%2Flogin' ),
 					'completed'   => ! empty( $security_data['two_factor'] ) ? true : false,
 					'requires'    => $security_data['plugin_setup'] ? false : true,
@@ -471,7 +471,7 @@ class Site_Assist_Dash {
 			$return_data['tasks'][] = [
 				'title'       => __( '(Recommended) Enable Trusted Devices', 'kadence-starter-templates' ),
 				'description' => __( 'Trusted Devices identifies the devices users use to login and can apply additional restrictions to unknown devices.', 'kadence-starter-templates' ),
-				'button'      => ! empty( $security_data['trusted_devices'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+				'button'      => ! empty( $security_data['trusted_devices'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 				'link'        => admin_url( 'admin.php?page=itsec&path=%2Fsettings%2Fconfigure%2Flogin' ),
 				'completed'   => ! empty( $security_data['trusted_devices'] ) ? true : false,
 				'requires'    => $security_data['plugin_setup'] ? false : true,
@@ -480,7 +480,7 @@ class Site_Assist_Dash {
 			$return_data['tasks'][] = [
 				'title'       => __( '(Recommended) Virtual Patching', 'kadence-starter-templates' ),
 				'description' => __( 'Get instant protection against new threats with virtual patching.', 'kadence-starter-templates' ),
-				'button'      => ! empty( $security_data['firewall'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+				'button'      => ! empty( $security_data['firewall'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 				'link'        => admin_url( 'admin.php?page=itsec-firewall&path=%2Fautomated' ),
 				'completed'   => ! empty( $security_data['firewall'] ) ? true : false,
 				'requires'    => $security_data['plugin_setup'] ? false : true,
@@ -554,7 +554,7 @@ class Site_Assist_Dash {
 		}
 		return [
 			'title'       => __( 'Website Email Setup', 'kadence-starter-templates' ),
-			'description' => __( 'Setup SMTP email to make sure you have good delivery of site notifications and transactional emails.', 'kadence-starter-templates' ),
+			'description' => __( 'Set up SMTP email to make sure you have good delivery of site notifications and transactional emails.', 'kadence-starter-templates' ),
 			'slug'        => 'email-setup',
 			'tasks'       => [
 				[
@@ -657,15 +657,19 @@ class Site_Assist_Dash {
 		// Get Timezone Label
 		$current_offset = get_option( 'gmt_offset' );
 		$tzstring       = get_option( 'timezone_string' );
-
+		$timesone_set = false;
 		if ( empty( $tzstring ) ) { // Create a UTC+- zone if no timezone string exists.
 			if ( 0 === (int) $current_offset ) {
 				$tzstring = 'UTC+0';
 			} elseif ( $current_offset < 0 ) {
+				$timesone_set = true;
 				$tzstring = 'UTC' . $current_offset;
 			} else {
+				$timesone_set = true;
 				$tzstring = 'UTC+' . $current_offset;
 			}
+		} else {
+			$timesone_set = true;
 		}
 		$old_data = get_option( '_kadence_starter_templates_last_import_data', array() );
 		$has_content = false;
@@ -687,6 +691,19 @@ class Site_Assist_Dash {
 			$has_content = ( 0 < wp_count_posts( 'attachment' )->inherit ? true : false );
 		}
 		$has_ai_profile = ( !empty( $goals ) ? true : false );
+		$policy_page_id = (int) get_option( 'wp_page_for_privacy_policy' );
+		$policy_page_published = false;
+		$policy_url = admin_url( 'options-privacy.php' );
+		if ( ! empty( $policy_page_id ) ) {
+			$policy_page = get_post( $policy_page_id );
+			if ( ! empty( $policy_page ) ) {
+				$policy_url = admin_url( 'post.php?post=' . $policy_page_id . '&action=edit' );
+				// Check if the policy page is published.
+				if ( 'publish' === $policy_page->post_status ) {
+					$policy_page_published = true;
+				}
+			}
+		}
 		$return_data = [
 			[
 				'title'       => __( 'AI Starter Site', 'kadence-starter-templates' ),
@@ -704,8 +721,8 @@ class Site_Assist_Dash {
 					],
 					[
 						'title'       => __( 'Setup Site AI Profile', 'kadence-starter-templates' ),
-						'description' => __( 'Setup your site AI profile to get started with your new site.', 'kadence-starter-templates' ),
-						'button'      => $has_ai_profile ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+						'description' => __( 'Set up your site AI profile to get started with your new site.', 'kadence-starter-templates' ),
+						'button'      => $has_ai_profile ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 						'link'        => admin_url( 'admin.php?page=kadence-starter-templates&ai=wizard' ),
 						'completed'   => $has_ai_profile,
 						'requires'    => $is_authorized ? false : true,
@@ -731,7 +748,7 @@ class Site_Assist_Dash {
 						'title'       => __( 'Provide Site Title & Tagline', 'kadence-starter-templates' ),
 						'description' => __( 'Give your site a name and a tagline.', 'kadence-starter-templates' ),
 						'image'       => KADENCE_STARTER_TEMPLATES_URL . 'assets/images/tasks/site-title-tagline.jpg',
-						'button'      => $site_title_tagline_completed ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+						'button'      => $site_title_tagline_completed ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 						'link'        => admin_url( 'options-general.php' ),
 						'completed'   => $site_title_tagline_completed,
 						'subtitle'    => $site_title_subtitle_label,
@@ -742,7 +759,7 @@ class Site_Assist_Dash {
 						'description' => __( 'Set the site icon that appears in browser tabs, bookmark bars, and within the WordPress mobile apps.', 'kadence-starter-templates' ),
 						'subtitle'    => ! empty( $site_icon ) ? '<img src="' . $site_icon . '" alt="' . __( 'Site Icon', 'kadence-starter-templates' ) . '" />' : __( 'Unset', 'kadence-starter-templates' ),
 						'image'       => KADENCE_STARTER_TEMPLATES_URL . 'assets/images/tasks/site-icon.jpg',
-						'button'      => ! empty( $site_icon ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+						'button'      => ! empty( $site_icon ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 						'link'        => admin_url( 'options-general.php' ),
 						'completed'   => ! empty( $site_icon ) ? true : false,
 						'sameTab'     => true,
@@ -752,7 +769,7 @@ class Site_Assist_Dash {
 						'subtitle'    => ! empty( $site_logo ) ? $site_logo : __( 'Unset', 'kadence-starter-templates' ),
 						'description' => __( 'Upload a logo for your site.', 'kadence-starter-templates' ),
 						'image'       => KADENCE_STARTER_TEMPLATES_URL . 'assets/images/tasks/site-logo.jpg',
-						'button'      => ! empty( $site_logo ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Setup', 'kadence-starter-templates' ),
+						'button'      => ! empty( $site_logo ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 						'manual'      => 'logo',
 						'link'        => admin_url( 'customize.php?autofocus%5Bsection%5D=title_tagline' ),
 						'completed'   => ! empty( $site_logo ) || ! empty( $site_assist_data['logo'] ) ? true : false,
@@ -777,9 +794,17 @@ class Site_Assist_Dash {
 						'button'      => __( 'Edit', 'kadence-starter-templates' ),
 						'link'        => admin_url( 'options-general.php' ),
 						'manual'      => 'timezone',
-						'completed'   => ! empty( $site_assist_data['timezone'] ) ? true : false,
+						'completed'   => ! empty( $site_assist_data['timezone'] ) || $timesone_set ? true : false,
 						'sameTab'     => true,
 					],
+					[
+						'title'       => __( 'Publish Privacy Policy Page', 'kadence-starter-templates' ),
+						'description' => __( 'Publish a privacy policy page.', 'kadence-starter-templates' ),
+						'button'      => __( 'Edit', 'kadence-starter-templates' ),
+						'link'        => $policy_url,
+						'completed'   => $policy_page_published ? true : false,
+						'sameTab'     => true,
+					]
 				],
 			],
 			[
@@ -845,7 +870,7 @@ class Site_Assist_Dash {
 						'title'       => __( 'Customize Archive Layout', 'kadence-starter-templates' ),
 						'description' => __( 'Customize the layout of your archive pages.', 'kadence-starter-templates' ),
 						'button'      => __( 'Edit', 'kadence-starter-templates' ),
-						'link'        => admin_url( 'customize.php?autofocus%5Bsection%5D=kadence_customizer_archive_layout' ),
+						'link'        => admin_url( 'customize.php?autofocus%5Bsection%5D=kadence_customizer_post_archive' ),
 						'completed'   => ! empty( $site_assist_data['archive'] ) ? true : false,
 						'manual'      => 'archive',
 						'sameTab'     => true,

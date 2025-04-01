@@ -983,6 +983,12 @@ class Starter_Templates {
 				'state' => Plugin_Check::active_check( 'restrict-content/restrictcontent.php' ),
 				'src'   => 'repo',
 			),
+			'bookit' => array(
+				'title' => 'Bookit',
+				'description' => __( 'Bookit is a booking system for WordPress.', 'kadence-starter-templates' ),
+				'state' => Plugin_Check::active_check( 'bookit/bookit.php' ),
+				'src'   => 'repo',
+			),
 			'kadence-woo-extras' => array(
 				'title' => 'Kadence Shop Kit',
 				'description' => __( 'Kadence Shop Kit adds additional features to WooCommerce.', 'kadence-starter-templates' ),
@@ -1494,6 +1500,13 @@ class Starter_Templates {
 					'path'  => 'depicter/depicter.php',
 					'src'   => 'repo',
 				),
+				'bookit' => array(
+					'title' => 'Bookit',
+					'base'  => 'bookit',
+					'slug'  => 'bookit',
+					'path'  => 'bookit/bookit.php',
+					'src'   => 'repo',
+				),
 				'seriously-simple-podcasting' => array(
 					'title' => 'Seriously Simple Podcasting',
 					'base'  => 'seriously-simple-podcasting',
@@ -1770,6 +1783,13 @@ class Starter_Templates {
 					'base'  => 'depicter',
 					'slug'  => 'depicter',
 					'path'  => 'depicter/depicter.php',
+					'src'   => 'repo',
+				),
+				'bookit' => array(
+					'title' => 'Bookit',
+					'base'  => 'bookit',
+					'slug'  => 'bookit',
+					'path'  => 'bookit/bookit.php',
 					'src'   => 'repo',
 				),
 				'seriously-simple-podcasting' => array(

@@ -64,6 +64,7 @@ class CLI_Commands {
 		'restrict-content',
 		'kadence-woo-extras',
 		'seriously-simple-podcasting',
+		'bookit',
 	];
 	/**
 	 * Product IDs
@@ -328,6 +329,7 @@ class CLI_Commands {
 			WP_CLI::error( 'Failed to get team image collection: ' . $team_image_collection->get_error_message() );
 			return;
 		}
+		update_option( '_kadence_starter_templates_last_import_data', array( $this->import_key ), 'no' );
 		$this->team_image_collection = $team_image_collection;
 		Starter_Import_Processes::get_instance()->trigger_writing_cache();
 	}
@@ -363,11 +365,18 @@ class CLI_Commands {
 			if ( in_array( 'tickets', $goals ) ) {
 				$plugins[] = 'event-tickets';
 			}
+			if ( in_array( 'booking', $goals ) ) {
+				$plugins[] = 'bookit';
+			}
 			if ( in_array( 'courses', $goals ) ) {
 				$plugins[] = 'learndash';
+				$plugins[] = 'learndash-course-grid';
 			}
 			if ( in_array( 'donations', $goals ) ) {
 				$plugins[] = 'give';
+			}
+			if ( in_array( 'podcasting', $goals ) ) {
+				$plugins[] = 'seriously-simple-podcasting';
 			}
 		}
 		$installer = new Plugin_Installer();

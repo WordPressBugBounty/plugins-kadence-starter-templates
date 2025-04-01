@@ -154,6 +154,12 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * @var string
 	 */
 	private $api_email = '';
+	/**
+	 * Environment.
+	 *
+	 * @var string
+	 */
+	private $env = '';
 
 	/**
 	 * The Product slug
@@ -484,6 +490,18 @@ class Library_REST_Controller extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'install_pages' ),
+					'permission_callback' => array( $this, 'get_items_permission_check' ),
+					'args'                => $this->get_collection_params(),
+				),
+			)
+		);
+		register_rest_route(
+			$this->namespace,
+			'/process-pages',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'process_pages' ),
 					'permission_callback' => array( $this, 'get_items_permission_check' ),
 					'args'                => $this->get_collection_params(),
 				),
@@ -1930,6 +1948,25 @@ class Library_REST_Controller extends WP_REST_Controller {
 		}
 		return rest_ensure_response( array( 'success' => true ) );
 	}
+	
+	/**
+	 * Install Pages.
+	 *
+	 * @param WP_REST_Request $request Full details about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 */
+	public function process_pages( WP_REST_Request $request ) {
+		$parameters = $request->get_json_params();
+		if ( empty( $parameters['pages'] ) ) {
+			return new WP_Error( 'no_pages', __( 'No pages to install.' ), array( 'status' => 500 ) );
+		}
+		$pages = $parameters['pages'];
+		if ( ! empty( $pages ) && is_array( $pages ) ) {
+			$pages = Starter_Import_Processes::get_instance()->process_pages( $pages );
+		}
+		
+		return rest_ensure_response( $pages );
+	}
 	/**
 	 * Install Pages.
 	 *
@@ -2753,7 +2790,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', $product_slug ),
 			'product_version' => KADENCE_STARTER_TEMPLATES_VERSION,
 		];
-
+		if ( ! empty( $license_data['env'] ) ) {
+			$defaults['env'] = $license_data['env'];
+		}
 		$parsed_args = wp_parse_args( $args, $defaults );
 
 		return base64_encode( json_encode( $parsed_args ) );
@@ -3924,6 +3963,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 				'product_slug' => $this->product_slug,
 			)
 		);
+		if ( ! empty( $this->env ) ) {
+			$args['env'] = $this->env;
+		}
 		// Get the response.
 		$api_url  = add_query_arg( $args, $this->remote_url );
 		$response = wp_safe_remote_get(
@@ -4254,6 +4296,13 @@ class Library_REST_Controller extends WP_REST_Controller {
 				'path'  => 'seriously-simple-podcasting/seriously-simple-podcasting.php',
 				'src'   => 'repo',
 			),
+			'bookit' => array(
+				'title' => 'Bookit',
+				'base'  => 'bookit',
+				'slug'  => 'bookit',
+				'path'  => 'bookit/bookit.php',
+				'src'   => 'repo',
+			),
 			'better-wp-security' => array(
 				'title' => 'Solid Security',
 				'base'  => 'better-wp-security',
@@ -4340,6 +4389,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 		if ( ! empty( $data['product_slug'] ) ) {
 			$this->product_slug = $data['product_slug'];
 		}
+		if ( ! empty( $data['env'] ) ) {
+			$this->env = $data['env'];
+		}
 		return $data;
 	}
 	/**
@@ -4353,6 +4405,20 @@ class Library_REST_Controller extends WP_REST_Controller {
 			}
 		}
 		return get_license_key( 'kadence-starter-templates' );
+	}
+	/**
+	 * Get the current environment.
+	 */
+	public function get_current_env() {
+		if ( defined( 'STELLARWP_UPLINK_API_BASE_URL' ) ) {
+			switch ( STELLARWP_UPLINK_API_BASE_URL ) {
+				case 'https://licensing-dev.stellarwp.com':
+					return 'dev';
+				case 'https://licensing-staging.stellarwp.com':
+					return 'staging';
+			}
+		}
+		return '';
 	}
 	/**
 	 * Get the current license key for the plugin.
@@ -4379,6 +4445,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 			'api_email' => ( ! empty( $data['email'] ) ? $data['email'] : '' ), // Backwards compatibility with older licensing.
 			'site_url'  => get_original_domain(),
 			'product_slug' => ( ! empty( $data['product'] ) ? $data['product'] : 'kadence-starter-templates' ),
+			'env'       => $this->get_current_env(),
 		];
 		return $license_data;
 	}

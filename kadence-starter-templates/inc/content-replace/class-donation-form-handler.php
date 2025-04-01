@@ -70,7 +70,7 @@ class Donation_Form_Handler {
 			'<!-- wp:give/donation-form {"id":' . $give_form_id . ',',
 			$content
 		);
-
+		
 		return $content;
 	}
 } 

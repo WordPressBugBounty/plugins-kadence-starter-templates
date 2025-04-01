@@ -344,12 +344,16 @@ class Content_Replacer {
             );
         }
         // Short Headline
-        if (isset($hero_content['heading']['short'])) {
-            $content = str_replace('Write a brief title', $hero_content['heading']['short'], $content);
-        } elseif (isset($base_content['heading']['short'])) {
-            $content = str_replace('Write a brief title', $base_content['heading']['short'], $content);
-        } elseif (isset($context_ai[0]['id']) && $context_ai[0]['id'] === 'contact-form') {
-            $content = str_replace('Write a brief title', 'Contact Us', $content);
+        if (isset($page_data['title']) && in_array($page_data['title'], ['Contact', 'About', 'Services', 'Reviews', 'Pricing', 'FAQ', 'Courses', 'Our Mission', 'Gallery', 'Schedule'])) {
+			$content = str_replace('Write a brief title', $page_data['title'], $content);
+         } else {
+            if (isset($hero_content['heading']['short'])) {
+                $content = str_replace('Write a brief title', $hero_content['heading']['short'], $content);
+            } elseif (isset($base_content['heading']['short'])) {
+                $content = str_replace('Write a brief title', $base_content['heading']['short'], $content);
+            } elseif (isset($context_ai[0]['id']) && $context_ai[0]['id'] === 'contact-form') {
+                $content = str_replace('Write a brief title', 'Contact Us', $content);
+            }
         }
 
         // overline

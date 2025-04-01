@@ -671,9 +671,9 @@ class Importer {
 	 */
 	private function check_for_image( $file ) {
 		if ( ! empty( $file ) ) {
-			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp)\b/i', $file, $matches );
+			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4)\b/i', $file, $matches );
 			$file_name = basename( $matches[0] );
-			$ext = array( ".png", ".jpg", ".gif", ".jpeg", ".webp" );
+			$ext = array( ".png", ".jpg", ".gif", ".jpeg", ".webp", ".mp4" );
 			$clean_filename = str_replace( $ext, "", $file_name );
 			$clean_filename = trim( html_entity_decode( sanitize_title( $clean_filename ) ) );
 			if ( post_exists( $clean_filename ) ) {

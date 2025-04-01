@@ -60,9 +60,11 @@ use function wc_switch_to_site_locale;
 use function wc_get_page_id;
 use function post_type_archive_title;
 use function get_post_type_archive_url;
+use function tribe_create_event;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+
 /**
  * Starter Import Processes.
  */
@@ -98,6 +100,12 @@ class Starter_Import_Processes {
 	 * @var string
 	 */
 	private $api_email = '';
+	/**
+	 * Environment.
+	 *
+	 * @var string
+	 */
+	private $env = '';
 	/**
 	 * API email for kadence membership
 	 *
@@ -290,6 +298,18 @@ class Starter_Import_Processes {
 		'work',
 	);
 	/**
+	 * Blocks that are based on CPT
+	 *
+	 * @var array
+	 */
+	private $kadence_cpt_blocks = array(
+		'kadence/header',
+		'kadence/navigation',
+		'kadence/query',
+		'kadence/query-card',
+		'kadence/advanced-form',
+	);
+	/**
 	 * @var Block_Library_Cache
 	 */
 	protected $block_library_cache;
@@ -348,6 +368,9 @@ class Starter_Import_Processes {
 			'key'       => $this->api_key,
 			'site_url'  => $this->site_url,
 		);
+		if ( ! empty( $this->env ) ) {
+			$args['env'] = $this->env;
+		}
 		$api_url  = add_query_arg( $args, 'https://base.startertemplatecloud.com/' . $site_id . '/wp-json/kadence-starter-base/v1/single-site' );
 		// Get the response.
 		$response = wp_safe_remote_get(
@@ -400,6 +423,9 @@ class Starter_Import_Processes {
 			'site_url'  => $this->site_url,
 			'beta'      => defined( 'KADENCE_STARTER_TEMPLATES_BETA' ) && KADENCE_STARTER_TEMPLATES_BETA ? 'true' : 'false',
 		);
+		if ( ! empty( $this->env ) ) {
+			$args['env'] = $this->env;
+		}
 		$api_url  = add_query_arg( $args, 'https://base.startertemplatecloud.com/wp-json/kadence-starter-base/v1/sites' );
 		// Get the response.
 		$response = wp_safe_remote_get(
@@ -1288,9 +1314,13 @@ class Starter_Import_Processes {
 		if ( empty( $pages ) || ! is_array( $pages ) ) {
 			return new WP_Error( 'no_pages', __( 'No pages to prepare.' ), array( 'status' => 500 ) );
 		}
+		$processed_pages = $this->process_pages( $pages );
+		if ( is_wp_error( $processed_pages ) ) {
+			return $processed_pages;
+		}
 		$i = 0;
 		$prepared_pages = array();
-		foreach ( $pages as $page_data ) {
+		foreach ( $processed_pages as $page_data ) {
 			if ( empty( $page_data['rows'] ) ) {
 				continue;
 			}
@@ -1443,7 +1473,14 @@ class Starter_Import_Processes {
 		foreach ( $navigation as $location_key => $menu ) {
 			$menu_exists = wp_get_nav_menu_object( $menu['name'] );
 			if ( $menu_exists ) {
-				wp_delete_nav_menu( $menu_exists->term_id );
+				if ( $location_key !== 'primary' && $navigation[$location_key] === $navigation['primary'] ) {
+					$locations = get_theme_mod( 'nav_menu_locations' );
+					$locations[ $location_key ] = $menu_exists->term_id;
+					set_theme_mod( 'nav_menu_locations', $locations );
+					continue;
+				} else {
+					wp_delete_nav_menu( $menu_exists->term_id );
+				}
 			}
 			$menu_id = wp_create_nav_menu( $menu['name'] );
 			$updates = array();
@@ -1507,8 +1544,9 @@ class Starter_Import_Processes {
 				);
 			}
 			update_term_meta( $menu_id, '_kadence_starter_templates_imported_term', true );
+			$extra_added = false;
 			if ( $location_key === 'primary' || $location_key === 'mobile' ) {
-				if ( 'events' === $install_goal && post_type_exists( 'tribe_events' ) ) {
+				if ( ( 'events' === $install_goal || 'tickets' === $install_goal ) && post_type_exists( 'tribe_events' ) ) {
 					$args = array(
 						'menu-item-title' => 'Events',
 						'menu-item-url' => get_post_type_archive_link( 'tribe_events' ),
@@ -1520,6 +1558,7 @@ class Starter_Import_Processes {
 						0,
 						$args
 					);
+					$extra_added = true;
 				} else if ( 'ecommerce' === $install_goal && class_exists( 'WooCommerce' ) ) {
 					$page_id   = wc_get_page_id( 'shop' );
 					$shop_page = get_post( $page_id );
@@ -1540,7 +1579,7 @@ class Starter_Import_Processes {
 					}
 					if ( ! empty( $page_id  ) && ! is_wp_error( $page_id ) ) {
 						$args = array(
-							'menu-item-title' => $item['title'],
+							'menu-item-title'     => 'Shop',
 							'menu-item-object-id' => $page_id,
 							'menu-item-object'    => 'page',
 							'menu-item-status'    => 'publish',
@@ -1552,6 +1591,7 @@ class Starter_Import_Processes {
 							0,
 							$args
 						);
+						$extra_added = true;
 					}
 				} else if ( 'courses' === $install_goal && post_type_exists( 'sfwd-courses' ) ) {
 					// Lets not duplicate pages.
@@ -1561,13 +1601,19 @@ class Starter_Import_Processes {
 					] );
 					if ( $has_page ) {
 						$args = array(
-							'menu-item-title' => get_the_title( $has_page[0]->ID ),
+							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
 							'menu-item-object-id' => $has_page[0]->ID,
 							'menu-item-object'    => 'page',
 							'menu-item-status'    => 'publish',
 							'menu-item-type'      => 'post_type',
 							'menu-item-position'  => $extra_order,
 						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
 					} else {
 						if ( defined( 'LEARNDASH_COURSE_GRID_VERSION' ) ) {
 							$page_content = '<!-- wp:learndash/ld-course-grid {"per_page":"12","thumbnail_size":"medium","ribbon":false,"title_clickable":true,"post_meta":false,"button":true,"pagination":"false","grid_height_equal":true,"progress_bar":true,"filter":false,"card":"grid-3","items_per_row":"3","font_family_title":"inter","font_family_description":"inter","font_size_title":"24px","font_size_description":"14px","font_color_description":"#4a4a68","id":"ld-cg-lxdnpir6oz","filter_search":false,"filter_price":false,"className":"home-course-grid"} /-->';
@@ -1595,6 +1641,7 @@ class Starter_Import_Processes {
 									0,
 									$args
 								);
+								$extra_added = true;
 							}
 						} else {
 							$args = array(
@@ -1608,10 +1655,181 @@ class Starter_Import_Processes {
 								0,
 								$args
 							);
+							$extra_added = true;
 						}
 					}
+				} else if ( 'donations' === $install_goal ) {
+					// Find the our mission page.
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Our Mission',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+					}
+				} else if ( 'donations' === $install_goal ) {
+					// Find the our mission page.
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Our Mission',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+					}
+				} else if ( 'services' === $install_goal ) {
+					// Find the our mission page.
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Services',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+					}
+				} else if ( 'landing' === $install_goal || 'booking' === $install_goal || 'membership' === $install_goal ) {
+					// Find the our pricing page.
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Pricing',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+					}
+				} else if ( 'blogging' === $install_goal ) {
+					// Create Blog page using wp_insert_post
+					$page_id = wp_insert_post(
+						array(
+						'post_title'   => 'Blog',
+						'post_content' => '',
+						'post_status'  => 'publish',
+						'post_type'    => 'page',
+						)
+					);
+					if ( ! is_wp_error( $page_id ) ) {
+						$args = array(
+							'menu-item-title'     => 'Blog',
+							'menu-item-object-id' => $page_id,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+						update_option( 'page_for_posts', $page_id );
+						update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
+					}
+				} else if ( 'podcasting' === $install_goal ) {
+					// Create Blog page using wp_insert_post
+					$page_id = wp_insert_post(
+						array(
+						'post_title'   => 'Podcast',
+						'post_content' => '',
+						'post_status'  => 'publish',
+						'post_type'    => 'page',
+						)
+					);
+					if ( ! is_wp_error( $page_id ) ) {
+						$args = array(
+							'menu-item-title'     => 'Podcast',
+							'menu-item-object-id' => $page_id,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+						update_option( 'page_for_posts', $page_id );
+						update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
+					}
+				} else if ( 'photography' === $install_goal ) {
+					// Find the our Gallery page.
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Gallery',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$extra_added = true;
+					}
 				}
+
 			}
+			// if ( ! $extra_added ) {
+			// 	// Check if any of the goals contained in $install_goals are installed.
+			// }
 			$locations = get_theme_mod( 'nav_menu_locations' );
 			$locations[ $location_key ] = $menu_id;
 			set_theme_mod( 'nav_menu_locations', $locations );
@@ -2873,6 +3091,9 @@ class Starter_Import_Processes {
 		if ( empty( $events ) ) {
 			return new WP_Error( 'no_events', __( 'No events to install.' ), array( 'status' => 500 ) );
 		}
+		if ( ! class_exists( '\Tribe__Events__Main' ) ) {
+			return new WP_Error( 'no_events', __( 'Tribe Events is not installed.' ), array( 'status' => 500 ) );
+		}
 		$new_events    = array();
 		$variation = 1;
 		foreach ( $events as $event_data ) {
@@ -3079,6 +3300,110 @@ class Starter_Import_Processes {
 		return;
 	}
 	/**
+	 * Update block ID in content with new ID
+	 */
+	private function update_block_ids($content, $id_map) {
+		$blocks = parse_blocks($content);
+
+		foreach ($blocks as &$block) {
+			if ( in_array( $block['blockName'], $this->kadence_cpt_blocks )
+				&& !empty($block['attrs']['id'])
+				&& isset($id_map[$block['attrs']['id']])) {
+				$block['attrs']['id'] = $id_map[$block['attrs']['id']];
+			}
+
+			if (!empty($block['innerBlocks'])) {
+				$inner_content = serialize_blocks($block['innerBlocks']);
+				$updated_inner_content = $this->update_block_ids($inner_content, $id_map);
+				$block['innerBlocks'] = parse_blocks($updated_inner_content);
+			}
+		}
+
+		return serialize_blocks($blocks);
+	}
+	/**
+	 * Install CPT.
+	 *
+	 * @param array $cpt_data The cpt data.
+	 * @param string $style The style.
+	 * @return int The cpt id.
+	 */
+	public function install_single_cpt( $cpt_data, $id_map = [], $style = 'light' ) {
+		$temp_content = $cpt_data['post_content'];
+		unset($cpt_data['ID']);
+		$title = ! empty( $style ) && 'light' !== $style ? $cpt_data['post_title'] . ' ' . $style : $cpt_data['post_title'];
+		$new_post_id  = wp_insert_post([
+			'post_type' => $cpt_data['post_type'],
+			'post_title' => $title,
+			'post_content' => '',
+			'post_status' => 'publish',
+		], true);
+
+		if ( ! is_wp_error($new_post_id) ) {
+			if ( ! empty( $cpt_data['meta'])) {
+				foreach ($cpt_data['meta'] as $meta_key => $meta_values) {
+					foreach ($meta_values as $meta_value) {
+						add_post_meta($new_post_id, $meta_key, $meta_value);
+					}
+				}
+			}
+			if ( ! empty( $id_map ) ) {
+				$temp_content = $this->update_block_ids($temp_content, $id_map);
+			}
+			wp_update_post(array(
+				'ID' => $new_post_id,
+				'post_content' => $temp_content
+			));
+
+			return $new_post_id;
+		}
+		return false;
+	}
+	/**
+	 * Process Form Replace.
+	 *
+	 * @param int $old_id The old ID.
+	 * @param int $new_id The new ID.
+	 * @return string The processed content.
+	 */
+	public function process_form_replace( $old_id, $new_id, $content ) {
+		$old_id = absint( $old_id );
+		$new_id = absint( $new_id );
+		$content = str_replace( '"id":' . $old_id, '"id":' . $new_id, $content );
+		return $content;
+	}
+	/**
+	 * Process Page Content for CPTs.
+	 *
+	 * @param string $content The content.
+	 * @param string $image_library The image library.
+	 * @return string The processed content.
+	 */
+	public function process_pages( $pages ) {
+		if ( empty( $pages ) || ! is_array( $pages ) ) {
+			return new WP_Error( 'no_pages', __( 'No pages to process.' ), array( 'status' => 500 ) );
+		}
+		// Loop through the pages and install every cpt in each row and replace the ID with the new ID.
+		foreach ( $pages as $key => $page_data ) {
+			// Loop through the rows and install every cpt.
+			foreach ( $page_data['rows'] as $row_key => $row_data ) {
+				if ( isset( $row_data['pattern_cpt_blocks']['kadence/advanced-form'] ) ) {
+					$style = ( ! empty( $row_data['pattern_style'] ) ) ? $row_data['pattern_style'] : 'light';
+					foreach ( $row_data['pattern_cpt_blocks']['kadence/advanced-form'] as $cpt_key => $cpt_data ) {
+						$old_id = $cpt_data['ID'];
+						$id_map = [];
+						$id = $this->install_single_cpt( $cpt_data, $id_map, $style);
+						if ( $id ) {
+							$id_map[$old_id] = $id;
+							$pages[$key]['rows'][$row_key]['pattern_content'] = $this->update_block_ids( $pages[$key]['rows'][$row_key]['pattern_content'], $id_map );
+						}
+					}
+				}
+			}
+		}
+		return $pages;
+	}
+	/**
 	 * Install Block CPT.
 	 *
 	 * @param array $block_cpt Block CPT.
@@ -3100,7 +3425,7 @@ class Starter_Import_Processes {
 	 * @param array $block_cpts Block CPTs.
 	 * @return array/WP_Error The block cpts.
 	 */
-	public function install_block_cpts( $block_cpts ) {
+	public function install_cpts( $block_cpts ) {
 		if ( empty( $block_cpts ) ) {
 			return new WP_Error( 'no_block_cpts', __( 'No block cpts to install.' ), array( 'status' => 500 ) );
 		}
@@ -3196,6 +3521,9 @@ class Starter_Import_Processes {
 			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', 'kadence-starter-templates' ),
 			'product_version' => KADENCE_STARTER_TEMPLATES_VERSION,
 		];
+		if ( ! empty( $this->env ) ) {
+			$defaults['env'] = $this->env;
+		}
 
 		$parsed_args = wp_parse_args( $args, $defaults );
 
@@ -3541,69 +3869,65 @@ class Starter_Import_Processes {
 	 * If does not exists register a new attribute.
 	 *
 	 * @param  string $raw_name Attribute name.
-	 * @return int
-	 * @throws Exception If taxonomy cannot be loaded.
+	 * @return int|false Returns the attribute ID if successful, false if failed.
 	 */
 	public function get_attribute_taxonomy_id( $raw_name ) {
-		global $wpdb, $wc_product_attributes;
+		try {
+			global $wpdb, $wc_product_attributes;
 
-		// These are exported as labels, so convert the label to a name if possible first.
-		$attribute_labels = wp_list_pluck( wc_get_attribute_taxonomies(), 'attribute_label', 'attribute_name' );
-		$attribute_name   = array_search( $raw_name, $attribute_labels, true );
+			// These are exported as labels, so convert the label to a name if possible first.
+			$attribute_labels = wp_list_pluck( wc_get_attribute_taxonomies(), 'attribute_label', 'attribute_name' );
+			$attribute_name   = array_search( $raw_name, $attribute_labels, true );
 
-		if ( ! $attribute_name ) {
-			$attribute_name = wc_sanitize_taxonomy_name( $raw_name );
-		}
+			if ( ! $attribute_name ) {
+				$attribute_name = wc_sanitize_taxonomy_name( $raw_name );
+			}
 
-		$attribute_id = wc_attribute_taxonomy_id_by_name( $attribute_name );
+			$attribute_id = wc_attribute_taxonomy_id_by_name( $attribute_name );
 
-		// Get the ID from the name.
-		if ( $attribute_id ) {
-			return $attribute_id;
-		}
+			// Get the ID from the name.
+			if ( $attribute_id ) {
+				return $attribute_id;
+			}
 
-		// If the attribute does not exist, create it.
-		$attribute_id = wc_create_attribute(
-			array(
-				'name'         => $raw_name,
-				'slug'         => $attribute_name,
-				'type'         => 'select',
-				'order_by'     => 'menu_order',
-				'has_archives' => false,
-			)
-		);
-
-		if ( is_wp_error( $attribute_id ) ) {
-			throw new Exception( $attribute_id->get_error_message(), 400 );
-		}
-
-		// Register as taxonomy while importing.
-		$taxonomy_name = wc_attribute_taxonomy_name( $attribute_name );
-		register_taxonomy(
-			$taxonomy_name,
-			apply_filters( 'woocommerce_taxonomy_objects_' . $taxonomy_name, array( 'product' ) ),
-			apply_filters(
-				'woocommerce_taxonomy_args_' . $taxonomy_name,
+			// If the attribute does not exist, create it.
+			$attribute_id = wc_create_attribute(
 				array(
-					'labels'       => array(
-						'name' => $raw_name,
-					),
-					'hierarchical' => true,
-					'show_ui'      => false,
-					'query_var'    => true,
-					'rewrite'      => false,
+					'name'         => $raw_name,
+					'slug'         => $attribute_name,
+					'type'         => 'select',
+					'order_by'     => 'menu_order',
+					'has_archives' => false,
 				)
-			)
-		);
+			);
 
-		// Set product attributes global.
-		$wc_product_attributes = array();
+			if ( is_wp_error( $attribute_id ) ) {
+				return false;
+			}
 
-		foreach ( wc_get_attribute_taxonomies() as $taxonomy ) {
-			$wc_product_attributes[ wc_attribute_taxonomy_name( $taxonomy->attribute_name ) ] = $taxonomy;
+			// Register as taxonomy while importing.
+			$taxonomy_name = wc_attribute_taxonomy_name( $attribute_name );
+			register_taxonomy(
+				$taxonomy_name,
+				apply_filters( 'woocommerce_taxonomy_objects_' . $taxonomy_name, array( 'product' ) ),
+				apply_filters(
+					'woocommerce_taxonomy_args_' . $taxonomy_name,
+					array(
+						'labels'       => array(
+							'name' => $raw_name,
+						),
+						'hierarchical' => true,
+						'show_ui'      => false,
+						'query_var'    => true,
+						'rewrite'      => false,
+					)
+				)
+			);
+
+			return $attribute_id;
+		} catch ( Exception $e ) {
+			return false;
 		}
-
-		return $attribute_id;
 	}
 	/**
 	 * Add terms to attribute and return an array of term ids 
@@ -4268,6 +4592,9 @@ class Starter_Import_Processes {
 				'site_url'  => $this->site_url,
 			)
 		);
+		if ( ! empty( $this->env ) ) {
+			$args['env'] = $this->env;
+		}
 		// Get the response.
 		$api_url  = add_query_arg( $args, $this->remote_url );
 		$response = wp_safe_remote_get(
@@ -4584,6 +4911,13 @@ class Starter_Import_Processes {
 				'path'  => 'depicter/depicter.php',
 				'src'   => 'repo',
 			),
+			'bookit' => array(
+				'title' => 'Bookit',
+				'base'  => 'bookit',
+				'slug'  => 'bookit',
+				'path'  => 'bookit/bookit.php',
+				'src'   => 'repo',
+			),
 			'kadence-woocommerce-email-designer' => array(
 				'title' => 'Kadence Woocommerce Email Designer',
 				'base'  => 'kadence-woocommerce-email-designer',
@@ -4667,6 +5001,9 @@ class Starter_Import_Processes {
 		if ( ! empty( $data['site_url'] ) ) {
 			$this->site_url = $data['site_url'];
 		}
+		if ( ! empty( $data['env'] ) ) {
+			$this->env = $data['env'];
+		}
 		return $data;
 	}
 	/**
@@ -4700,6 +5037,20 @@ class Starter_Import_Processes {
 		return '';
 	}
 	/**
+	 * Get the current environment.
+	 */
+	public function get_current_env() {
+		if ( defined( 'STELLARWP_UPLINK_API_BASE_URL' ) ) {
+			switch ( STELLARWP_UPLINK_API_BASE_URL ) {
+				case 'https://licensing-dev.stellarwp.com':
+					return 'dev';
+				case 'https://licensing-staging.stellarwp.com':
+					return 'staging';
+			}
+		}
+		return '';
+	}
+	/**
 	 * Get the current license key for the plugin.
 	 */
 	public function get_pro_license_data() {
@@ -4707,6 +5058,7 @@ class Starter_Import_Processes {
 			'api_key'   => $this->get_current_license_key(),
 			'api_email' => $this->get_current_license_email(),
 			'site_url'  => get_original_domain(),
+			'env'       => $this->get_current_env(),
 		);
 		return $license_data;
 	}

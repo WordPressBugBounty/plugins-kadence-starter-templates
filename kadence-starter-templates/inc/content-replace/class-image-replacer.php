@@ -112,7 +112,20 @@ class Image_Replacer {
 		if ( $hero && $hero === 'secondary' ) {
 			$imgs['p1'] = self::get_image_src( $a_roll, 0, 0 );
 		}
+		// Handle special contexts
+		if ( $context && ( $context == '18252' ) ) {
+			// Video 20
+			$card_source = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-scaled.jpg';
+			$card_replacements = array(
+				array( 'from' => $card_source, 'to' => $imgs['a1'] ),
+				array( 'from' => $card_source, 'to' => $imgs['a1'] ),
+			);
 
+			foreach ( $card_replacements as $replacement ) {
+				// This needs to replace the first instance of the image for each replacement.
+				$content = self::replace_image_string( $content, $replacement );
+			}
+		}
 		// Handle special contexts
 		if ( $context && ( $context == '14499' || $context == '18895' ) ) {
 			// Cards 21 & Video 23
@@ -297,6 +310,19 @@ class Image_Replacer {
 		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-2-scaled.jpg';
 		$bRollS3 =
 		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-3-scaled.jpg';
+		$bRollS4 =
+		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-4-scaled.jpg';
+		$bRollS5 =
+		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-5-scaled.jpg';
+		$bRollS6 =
+		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-6-scaled.jpg';
+		$bRollS7 =
+		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-7-scaled.jpg';
+		$bRollS8 =
+		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-8-scaled.jpg';
+		$bRollS9 =
+		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-9-scaled.jpg';
+		
 		$bRollL =
 		'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-819x1024.jpg';
 		$bRollL1 =
@@ -327,6 +353,12 @@ class Image_Replacer {
 			array( 'from' => $bRollS1, 'to' => $imgs['b4'] ),
 			array( 'from' => $bRollS2, 'to' => $imgs['b5'] ),
 			array( 'from' => $bRollS3, 'to' => $imgs['b6'] ),
+			array( 'from' => $bRollS4, 'to' => $imgs['b7'] ),
+			array( 'from' => $bRollS5, 'to' => $imgs['b8'] ),
+			array( 'from' => $bRollS6, 'to' => $imgs['b9'] ),
+			array( 'from' => $bRollS7, 'to' => $imgs['b10'] ),
+			array( 'from' => $bRollS8, 'to' => $imgs['b11'] ),
+			array( 'from' => $bRollS9, 'to' => $imgs['b12'] ),
 			array( 'from' => $bRollL, 'to' => $imgs['b1'] ),
 			array( 'from' => $bRollL, 'to' => $imgs['b2'] ),
 			array( 'from' => $bRollL, 'to' => $imgs['b3'] ),

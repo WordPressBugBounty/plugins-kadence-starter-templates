@@ -120,8 +120,7 @@ class WXRImporter extends \WP_Importer {
 	protected function get_reader( $file ) {
 		if ( ! class_exists( 'XMLReader' ) ) {
 			$this->logger->critical( __( 'The XMLReader class is missing! Please install the XMLReader PHP extension on your server', 'wordpress-importer' ) );
-
-			return false;
+			return new WP_Error( 'wxr_importer.cannot_parse', __( 'The XMLReader class is missing! Please install the XMLReader PHP extension on your server', 'wordpress-importer' ) );
 		}
 		$reader = new XMLReader();
 		$status = $reader->open( $file );

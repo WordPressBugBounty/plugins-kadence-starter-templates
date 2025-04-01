@@ -304,6 +304,13 @@ class Plugin_Installer {
 				'path'  => 'depicter/depicter.php',
 				'src'   => 'repo',
 			),
+			'bookit' => array(
+				'title' => 'Bookit',
+				'base'  => 'bookit',
+				'slug'  => 'bookit',
+				'path'  => 'bookit/bookit.php',
+				'src'   => 'repo',
+			),
 			'kadence-woocommerce-email-designer' => array(
 				'title' => 'Kadence Woocommerce Email Designer',
 				'base'  => 'kadence-woocommerce-email-designer',
