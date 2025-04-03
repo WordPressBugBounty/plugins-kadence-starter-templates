@@ -110,7 +110,7 @@ class Content_Replacer {
                 break;
             case 'featured-products':
             case 'featured-product':
-                $content = self::process_featured_products_content($content, $base_content, $context_ai, $context);
+                $content = self::process_featured_products_content($content, $base_content, $context_ai, $context, $is_html);
                 break;
             case 'product-loop':
                 $content = self::process_product_loop_content($content, $base_content, $columns_content);
@@ -1455,7 +1455,7 @@ class Content_Replacer {
      * @param string $context The context.
      * @return string
      */
-    private static function process_featured_products_content($content, $base_content, $context_ai, $context) {
+    private static function process_featured_products_content($content, $base_content, $context_ai, $context, $is_html) {
         $featured_content = self::find_content_by_id($context_ai, $context . '-single');
 
         // Headline medium

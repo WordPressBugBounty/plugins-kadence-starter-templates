@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Starter Templates by Kadence WP
  * Description: Launch a beautiful website with the power of AI or using our classic pre built style.
- * Version: 2.2.2
+ * Version: 2.2.3
  * Author: Kadence WP
  * Author URI: https://kadencewp.com/
  * Requires PHP: 7.4
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'KADENCE_STARTER_TEMPLATES_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KADENCE_STARTER_TEMPLATES_URL', trailingslashit( plugin_dir_url( __FILE__ ) ) );
-define( 'KADENCE_STARTER_TEMPLATES_VERSION', '2.2.2' );
+define( 'KADENCE_STARTER_TEMPLATES_VERSION', '2.2.3' );
 
 require_once plugin_dir_path( __FILE__ ) . 'vendor/vendor-prefixed/autoload.php';
 require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';

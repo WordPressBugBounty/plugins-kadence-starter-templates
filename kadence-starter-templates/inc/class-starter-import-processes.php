@@ -46,6 +46,7 @@ use WC_Product_Variation;
 use WC_Product_Attribute;
 use WP_Error;
 use WC_Install;
+use WP_Query;
 use function sanitize_file_name;
 use function wp_safe_remote_get;
 use function flush_rewrite_rules;
@@ -979,8 +980,58 @@ class Starter_Import_Processes {
 		if ( false === $removed_content ) {
 			return new WP_Error( 'remove_failed', __( 'Remove past content failed.' ), array( 'status' => 500 ) );
 		}
+		/**
+		 * Clean up default contents.
+		 */
+		$hello_world = $this->get_post_by_title( 'Hello World', OBJECT, 'post' );
+		if ( $hello_world ) {
+			wp_delete_post( $hello_world->ID, true );// Hello World.
+		}
+		$sample_page = $this->get_post_by_title( 'Sample Page' );
+		if ( $sample_page ) {
+			wp_delete_post( $sample_page->ID, true ); // Sample Page.
+		}
+		wp_delete_comment( 1, true ); // WordPress comment.
 
 		return true;
+	}
+	/**
+	 * Get Post by title.
+	 * 
+	 * @param string $page_title The title of the post.
+	 * @param string $output The output type.
+	 * @param string $post_type The post type.
+	 * @return object|null The post object or null if not found.
+	 */
+	public function get_post_by_title( $page_title, $output = OBJECT, $post_type = 'page' ) {
+		$query = new WP_Query(
+			array(
+				'post_type'              => $post_type,
+				'title'                  => $page_title,
+				'post_status'            => 'all',
+				'posts_per_page'         => 1,
+				'no_found_rows'          => true,
+				'ignore_sticky_posts'    => true,
+				'update_post_term_cache' => false,
+				'update_post_meta_cache' => false,
+				'orderby'                => 'date',
+				'order'                  => 'ASC',
+			)
+		);
+
+		if ( ! empty( $query->post ) ) {
+			$_post = $query->post;
+
+			if ( ARRAY_A === $output ) {
+				return $_post->to_array();
+			} elseif ( ARRAY_N === $output ) {
+				return array_values( $_post->to_array() );
+			}
+
+			return $_post;
+		}
+
+		return null;
 	}
 	/**
 	 * Get remote download link.
@@ -1268,7 +1319,7 @@ class Starter_Import_Processes {
 			}
 			// Don't output sections that don't match the goals.
 			if ( $row_condition !== '' && $row_condition !== 'general' ) {
-				if ( $row_condition === 'replace' && ( in_array( 'ecommerce', $goals ) || in_array( 'events', $goals ) || in_array( 'donations', $goals ) || in_array( 'learning', $goals ) || in_array( 'membership', $goals ) || in_array( 'photography', $goals ) || in_array( 'landing', $goals ) ) ) {
+				if ( $row_condition === 'replace' && ( in_array( 'ecommerce', $goals ) || in_array( 'events', $goals ) || in_array( 'donations', $goals ) || in_array( 'learning', $goals ) || in_array( 'membership', $goals ) || in_array( 'photography', $goals ) || in_array( 'landing', $goals ) ) || in_array( 'blogging', $goals ) ) {
 					continue;
 				} else if ( ! in_array( $row_condition, $goals ) ) {
 					continue;
@@ -1281,7 +1332,7 @@ class Starter_Import_Processes {
 				$row_content,
 				$image_library,
 				$row_categories,
-				$row_context,
+				$row_pattern_id,
 				$variation,
 				$team_image_collection,
 				$row_hero,
@@ -1544,9 +1595,11 @@ class Starter_Import_Processes {
 				);
 			}
 			update_term_meta( $menu_id, '_kadence_starter_templates_imported_term', true );
+			$header_button_text = 'Get Started';
+			$header_button_url = '#';
 			$extra_added = false;
 			if ( $location_key === 'primary' || $location_key === 'mobile' ) {
-				if ( ( 'events' === $install_goal || 'tickets' === $install_goal ) && post_type_exists( 'tribe_events' ) ) {
+				if ( 'events' === $install_goal && post_type_exists( 'tribe_events' ) ) {
 					$args = array(
 						'menu-item-title' => 'Events',
 						'menu-item-url' => get_post_type_archive_link( 'tribe_events' ),
@@ -1558,7 +1611,32 @@ class Starter_Import_Processes {
 						0,
 						$args
 					);
+					$header_button_text = 'Calendar';
+					$header_button_url = get_post_type_archive_link( 'tribe_events' );
 					$extra_added = true;
+				} else if ( 'tickets' === $install_goal ) {
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Pricing',
+					] );
+					if ( $has_page ) {
+						$args = array(
+							'menu-item-title' => 'Pricing',
+							'menu-item-object-id' => $has_page[0]->ID,
+							'menu-item-object'    => 'page',
+							'menu-item-status'    => 'publish',
+							'menu-item-type'      => 'post_type',
+							'menu-item-position'  => $extra_order,
+						);
+						$item_id = wp_update_nav_menu_item(
+							$menu_id,
+							0,
+							$args
+						);
+						$header_button_text = 'Get Tickets';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
+						$extra_added = true;
+					}
 				} else if ( 'ecommerce' === $install_goal && class_exists( 'WooCommerce' ) ) {
 					$page_id   = wc_get_page_id( 'shop' );
 					$shop_page = get_post( $page_id );
@@ -1591,6 +1669,8 @@ class Starter_Import_Processes {
 							0,
 							$args
 						);
+						$header_button_text = 'Shop Now';
+						$header_button_url = get_the_permalink( $page_id );
 						$extra_added = true;
 					}
 				} else if ( 'courses' === $install_goal && post_type_exists( 'sfwd-courses' ) ) {
@@ -1613,6 +1693,8 @@ class Starter_Import_Processes {
 							0,
 							$args
 						);
+						$header_button_text = 'View Courses';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
 						$extra_added = true;
 					} else {
 						if ( defined( 'LEARNDASH_COURSE_GRID_VERSION' ) ) {
@@ -1641,6 +1723,8 @@ class Starter_Import_Processes {
 									0,
 									$args
 								);
+								$header_button_text = 'View Courses';
+								$header_button_url = get_the_permalink( $page_id );
 								$extra_added = true;
 							}
 						} else {
@@ -1656,6 +1740,8 @@ class Starter_Import_Processes {
 								$args
 							);
 							$extra_added = true;
+							$header_button_text = 'View Courses';
+							$header_button_url = get_post_type_archive_link( 'sfwd-courses' );
 						}
 					}
 				} else if ( 'donations' === $install_goal ) {
@@ -1678,28 +1764,8 @@ class Starter_Import_Processes {
 							0,
 							$args
 						);
-						$extra_added = true;
-					}
-				} else if ( 'donations' === $install_goal ) {
-					// Find the our mission page.
-					$has_page = get_posts( [
-						'post_type'  => 'page',
-						'title'      => 'Our Mission',
-					] );
-					if ( $has_page ) {
-						$args = array(
-							'menu-item-title'     => get_the_title( $has_page[0]->ID ),
-							'menu-item-object-id' => $has_page[0]->ID,
-							'menu-item-object'    => 'page',
-							'menu-item-status'    => 'publish',
-							'menu-item-type'      => 'post_type',
-							'menu-item-position'  => $extra_order,
-						);
-						$item_id = wp_update_nav_menu_item(
-							$menu_id,
-							0,
-							$args
-						);
+						$header_button_text = 'Donate Now';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
 						$extra_added = true;
 					}
 				} else if ( 'services' === $install_goal ) {
@@ -1722,6 +1788,8 @@ class Starter_Import_Processes {
 							0,
 							$args
 						);
+						$header_button_text = 'Get Started';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
 						$extra_added = true;
 					}
 				} else if ( 'landing' === $install_goal || 'booking' === $install_goal || 'membership' === $install_goal ) {
@@ -1744,6 +1812,8 @@ class Starter_Import_Processes {
 							0,
 							$args
 						);
+						$header_button_text = 'Get Started';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
 						$extra_added = true;
 					}
 				} else if ( 'blogging' === $install_goal ) {
@@ -1774,6 +1844,14 @@ class Starter_Import_Processes {
 						update_option( 'page_for_posts', $page_id );
 						update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
 					}
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Contact',
+					] );
+					if ( $has_page ) {
+						$header_button_text = 'Subscribe';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
+					}
 				} else if ( 'podcasting' === $install_goal ) {
 					// Create Blog page using wp_insert_post
 					$page_id = wp_insert_post(
@@ -1802,6 +1880,14 @@ class Starter_Import_Processes {
 						update_option( 'page_for_posts', $page_id );
 						update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
 					}
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Contact',
+					] );
+					if ( $has_page ) {
+						$header_button_text = 'Subscribe';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
+					}
 				} else if ( 'photography' === $install_goal ) {
 					// Find the our Gallery page.
 					$has_page = get_posts( [
@@ -1824,9 +1910,20 @@ class Starter_Import_Processes {
 						);
 						$extra_added = true;
 					}
+					$has_page = get_posts( [
+						'post_type'  => 'page',
+						'title'      => 'Contact',
+					] );
+					if ( $has_page ) {
+						$header_button_text = 'Contact Me';
+						$header_button_url = get_the_permalink( $has_page[0]->ID );
+					}
 				}
 
 			}
+			// Update the header button text and url.
+			set_theme_mod( 'header_button_label', $header_button_text );
+			set_theme_mod( 'header_button_link', $header_button_url );
 			// if ( ! $extra_added ) {
 			// 	// Check if any of the goals contained in $install_goals are installed.
 			// }
@@ -3977,8 +4074,228 @@ class Starter_Import_Processes {
 	 * @return string page content.
 	 */
 	public function process_page_content( $content, $image_library = array() ) {
+		// Check if the content is empty.
+		if ( empty( $content ) ) {
+			return $content;
+		}
+		// Check if the content is block content.
+		if ( str_contains( (string) $content, '<!-- wp:' ) ) {
+			$content = $this->process_images_for_block_content( $content, $image_library );
+		} else {
+			$content = $this->process_images_for_regular_content( $content, $image_library );
+		}
+		return $content;
+	}
+	/**
+	 * Process images for block content.
+	 */
+	public function process_images_for_block_content( $content, $image_library ) {
+		// First check if there are any images in the content. Use regex to find all urls
+		preg_match_all( '/https?:\/\/[^\'" ]+/i', $content, $match );
 
-		// Find all urls.
+		$all_urls = array_unique( $match[0] );
+		if ( empty( $all_urls ) ) {
+			return $content;
+		}
+		$map_urls    = array();
+		$image_urls  = array();
+		// Find all the images.
+		foreach ( $all_urls as $key => $link ) {
+			if ( $this->check_for_image( $link ) ) {
+				$image_urls[] = $link;
+			}
+		}
+		if ( empty( $image_urls ) ) {
+			return $content;
+		}
+		// Process images.
+		if ( ! empty( $image_urls ) ) {
+			foreach ( $image_urls as $key => $image_url ) {
+				// Download remote image.
+				$image = [
+					'url' => $image_url,
+					'id'  => 0,
+				];
+				// If it's a pexels image, get the data.
+				if ( substr( $image_url, 0, strlen( 'https://images.pexels.com' ) ) === 'https://images.pexels.com' ) {
+					$image_data = $this->get_image_info( $image_library, $image_url );
+					if ( $image_data ) {
+						$alt                       = ! empty( $image_data['alt'] ) ? $image_data['alt'] : '';
+						$image['filename']         = ! empty( $image_data['filename'] ) ? $image_data['filename'] : $this->create_filename_from_alt( $alt );
+						$image['photographer']     = ! empty( $image_data['photographer'] ) ? $image_data['photographer'] : '';
+						$image['photographer_url'] = ! empty( $image_data['photographer_url'] ) ? $image_data['photographer_url'] : '';
+						$image['photograph_url']   = ! empty( $image_data['url'] ) ? $image_data['url'] : '';
+						$image['alt']              = $alt;
+						$image['title']            = __( 'Photo by', 'kadence-blocks' ) . ' ' . $image['photographer'];
+					}
+				}
+				$downloaded_image       = $this->import_image( $image );
+				$map_urls[ $image_url ] = [
+					'url' => $downloaded_image['url'],
+					'id'  => $downloaded_image['id'],
+					'width' => $downloaded_image['width'],
+					'height' => $downloaded_image['height'],
+				];
+			}
+		}
+		// parse the content into blocks.
+		$content = $this->loop_through_block_content_for_images( $content, $map_urls );
+		
+		// Replace the rest of images in content if missed.
+		foreach ( $map_urls as $old_url => $new_image ) {
+			$content = str_replace( $old_url, $new_image['url'], $content );
+			// Replace the slashed URLs if any exist.
+			$old_url          = str_replace( '/', '/\\', $old_url );
+			$new_image['url'] = str_replace( '/', '/\\', $new_image['url'] );
+			$content          = str_replace( $old_url, $new_image['url'], $content );
+		}
+		return $content;
+	}
+
+	/**
+	 * Process images for block content.
+	 */
+	public function loop_through_block_content_for_images( $content, $map_urls ) {
+		if ( empty( $content ) ) {
+			return $content;
+		}
+		$blocks = parse_blocks( $content );
+		if ( ! empty( $blocks ) ) {
+			foreach ( $blocks as &$block ) {
+				if ( !empty( $block['blockName'] ) ) {
+					switch ( $block['blockName'] ) {
+						case 'kadence/image':
+							// We need to extract the url from $block['innerHTML'].
+							$image_url = $this->extract_image_url_from_block_content( $block['innerHTML'] );
+							if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+								$block['innerHTML'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerHTML'] );
+								$block['innerHTML'] = str_replace( 'wp-image-' . $block['attrs']['id'], 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
+								$block['innerContent'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerContent'] );
+								$block['innerContent'] = str_replace( 'wp-image-' . $block['attrs']['id'], 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
+								$block['attrs']['id'] = absint( $map_urls[ $image_url ]['id'] );
+								$block['attrs']['globalAlt'] = true;
+							}
+							break;
+						case 'kadence/advancedgallery':
+							if ( !empty ( $block['attrs']['imagesDynamic'] ) && is_array( $block['attrs']['imagesDynamic'] ) ) {
+								$ids = [];
+								foreach ( $block['attrs']['imagesDynamic'] as &$image ) {
+									if ( !empty( $image['thumbUrl'] ) && isset( $map_urls[ $image['thumbUrl'] ] ) ) {
+										$ids[] = absint( $map_urls[ $image['thumbUrl'] ]['id'] );
+										$image['id'] = $map_urls[ $image['thumbUrl'] ]['id'];
+										$image['width'] = $map_urls[ $image['thumbUrl'] ]['width'];
+										$image['height'] = $map_urls[ $image['thumbUrl'] ]['height'];
+										$image['lightUrl'] = $map_urls[ $image['thumbUrl'] ]['url'];
+										$image['url'] = $map_urls[ $image['thumbUrl'] ]['url'];
+										$image['thumbUrl'] = $map_urls[ $image['thumbUrl'] ]['url'];
+									}
+								}
+								$block['attrs']['ids'] = $ids;
+							}
+							break;
+						case 'kadence/column':
+							if ( !empty( $block['attrs']['backgroundImg'][0]['bgImg'] ) ) {
+								$image_url = $block['attrs']['backgroundImg'][0]['bgImg'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$block['attrs']['backgroundImg'][0]['bgImg'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['backgroundImg'][0]['bgImgID'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							if ( !empty( $block['attrs']['overlayImg'][0]['bgImg'] ) ) {
+								$image_url = $block['attrs']['overlayImg'][0]['bgImg'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$block['attrs']['overlayImg'][0]['bgImg'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['overlayImg'][0]['bgImgID'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							break;
+						case 'kadence/rowlayout':
+							if ( !empty( $block['attrs']['bgImg'] ) ) {
+								$image_url = $block['attrs']['bgImg'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$block['attrs']['bgImg'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['bgImgID'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							if ( !empty( $block['attrs']['overlayBgImg'] ) ) {
+								$image_url = $block['attrs']['overlayBgImg'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$block['attrs']['overlayBgImg'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['overlayBgImgID'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							if ( !empty( $block['attrs']['backgroundSlider'] ) && is_array( $block['attrs']['backgroundSlider'] ) ) {
+								foreach ( $block['attrs']['backgroundSlider'] as &$image ) {
+									if ( !empty( $image['bgImg'] ) && isset( $map_urls[ $image['bgImg'] ] ) ) {
+										$image['bgImg'] = $map_urls[ $image['bgImg'] ]['url'];
+										$image['bgImgID'] = $map_urls[ $image['bgImg'] ]['id'];
+									}
+								}
+							}
+							break;
+						case 'kadence/infobox':
+							if ( !empty( $block['attrs']['mediaImage'][0]['url'] ) ) {
+								$image_url = $block['attrs']['mediaImage'][0]['url'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$current_id = ( !empty( $block['attrs']['mediaImage'][0]['id'] ) ) ? $block['attrs']['mediaImage'][0]['id'] : 0;
+									$block['innerHTML'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerHTML'] );
+									$block['innerHTML'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
+									$block['innerContent'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerContent'] );
+									$block['innerContent'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
+									$block['attrs']['mediaImage'][0]['url'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['mediaImage'][0]['id'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							break;
+						case 'kadence/testimonial':
+							if ( !empty( $block['attrs']['url'] ) ) {
+								$image_url = $block['attrs']['url'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$block['attrs']['url'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['id'] = absint( $map_urls[ $image_url ]['id'] );
+									$block['attrs']['sizes'] = [];
+								}
+							}
+							break;
+						case 'kadence/videopopup':
+							if ( !empty( $block['attrs']['background'][0]['img'] ) ) {
+								$image_url = $block['attrs']['background'][0]['img'];
+								if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+									$current_id = ( !empty( $block['attrs']['background'][0]['imgID'] ) ) ? $block['attrs']['background'][0]['imgID'] : 0;
+									$block['innerHTML'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerHTML'] );
+									$block['innerHTML'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
+									$block['innerContent'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerContent'] );
+									$block['innerContent'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
+									$block['attrs']['background'][0]['img'] = $map_urls[ $image_url ]['url'];
+									$block['attrs']['background'][0]['imgID'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							break;
+					}
+				}
+				if (!empty($block['innerBlocks'])) {
+					$inner_content = serialize_blocks($block['innerBlocks']);
+					$updated_inner_content = $this->loop_through_block_content_for_images($inner_content, $map_urls);
+					$block['innerBlocks'] = parse_blocks($updated_inner_content);
+				}
+			}
+		}
+
+		return serialize_blocks($blocks);
+	}
+	/**
+	 * Extract image URL from block content.
+	 */
+	public function extract_image_url_from_block_content( $content ) {
+		// Use regex to find the src attribute.
+		preg_match_all( '/src="([^"]+)"/', $content, $match );
+		return isset( $match[1][0] ) ? $match[1][0] : '';
+	}
+	
+	/**
+	 * Process images for regular content.
+	 */
+	public function process_images_for_regular_content( $content, $image_library ) {
 		preg_match_all( '/https?:\/\/[^\'" ]+/i', $content, $match );
 
 		$all_urls = array_unique( $match[0] );
@@ -3995,8 +4312,7 @@ class Starter_Import_Processes {
 				// Avoid srcset images.
 				if (
 					false === strpos( $link, '-150x' ) &&
-					false === strpos( $link, '-300x' ) &&
-					false === strpos( $link, '-1024x' )
+					false === strpos( $link, '-300x' )
 				) {
 					$image_urls[] = $link;
 				}
@@ -4033,7 +4349,7 @@ class Starter_Import_Processes {
 			$old_url = str_replace( '/', '/\\', $old_url );
 			$new_url = str_replace( '/', '/\\', $new_url );
 			$content = str_replace( $old_url, $new_url, $content );
-		}		
+		}
 		return $content;
 	}
 	/**
@@ -4091,9 +4407,12 @@ class Starter_Import_Processes {
 			);
 		}
 		if ( ! empty( $image_id ) ) {
+			$image_sizes = wp_get_attachment_metadata( $image_id );
 			$local_image = array(
 				'id'  => $image_id,
 				'url' => wp_get_attachment_url( $image_id ),
+				'width' => $image_sizes['width'],
+				'height' => $image_sizes['height'],
 			);
 			return array(
 				'status' => true,
@@ -4174,10 +4493,12 @@ class Starter_Import_Processes {
 		}
 		update_post_meta( $post_id, '_kadence_blocks_image_hash', sha1( $image_data['url'] ) );
 		update_post_meta( $post_id, '_kadence_starter_templates_imported_post', true );
-
+		$image_sizes = wp_get_attachment_metadata( $post_id );
 		return array(
 			'id'  => $post_id,
 			'url' => $upload['url'],
+			'width' => $image_sizes['width'],
+			'height' => $image_sizes['height'],
 		);
 	}
 	/**
@@ -4215,7 +4536,7 @@ class Starter_Import_Processes {
 		if ( substr( $link, 0, strlen( 'https://images.pexels.com' ) ) === 'https://images.pexels.com' ) {
 			return true;
 		}
-		return preg_match( '/^((https?:\/\/)|(www\.))([a-z0-9-].?)+(:[0-9]+)?\/[\w\-]+\.(jpg|png|gif|webp|jpeg)\/?$/i', $link );
+		return preg_match( '/^((https?:\/\/)|(www\.))([a-z0-9-].?)+(:[0-9]+)?\/[\w\-]+\.(jpg|png|gif|webp|jpeg|mp4)\/?$/i', $link );
 	}
 	/**
 	 * Checks if a given request has access to search content.

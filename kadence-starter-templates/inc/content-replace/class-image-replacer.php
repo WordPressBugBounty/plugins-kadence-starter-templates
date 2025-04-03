@@ -41,13 +41,13 @@ class Image_Replacer {
 	 * @param string $content The content to replace images in.
 	 * @param array  $images The image collection data.
 	 * @param array  $categories The categories.
-	 * @param mixed  $context The context.
+	 * @param mixed  $pattern_id The context.
 	 * @param int    $variation The variation number.
 	 * @param array  $team_collection The team collection data.
 	 * @param bool   $hero Whether this is a hero section.
 	 * @return string
 	 */
-	public static function replace_images( $content, $images, $categories = [], $context = null, $variation = 0, $team_collection = [], $hero = false ) {
+	public static function replace_images( $content, $images, $categories = [], $pattern_id = null, $variation = 0, $team_collection = [], $hero = false ) {
 		if ( empty( $content ) ) {
 			return $content;
 		}
@@ -89,12 +89,23 @@ class Image_Replacer {
 			'a3' => self::get_image_src( $a_roll, $variation + 2, $reset_variation + 1 ),
 			'a4' => self::get_image_src( $a_roll, $variation + 3, $reset_variation + 2 ),
 			'a5' => self::get_image_src( $a_roll, $variation + 4, $reset_variation + 3 ),
+			'a6' => self::get_image_src( $a_roll, $variation + 5, $reset_variation + 4 ),
+			'a7' => self::get_image_src( $a_roll, $variation + 6, $reset_variation + 5 ),
+			'a8' => self::get_image_src( $a_roll, $variation + 7, $reset_variation + 6 ),
+			'a9' => self::get_image_src( $a_roll, $variation + 8, $reset_variation + 7 ),
+			'a10' => self::get_image_src( $a_roll, $variation + 9, $reset_variation + 8 ),
 			'b1' => self::get_image_src( $b_roll, $b_variation, 0 ),
 			'b2' => self::get_image_src( $b_roll, $b_variation + 1, 1 ),
 			'b3' => self::get_image_src( $b_roll, $b_variation + 2, 2, 1 ),
 			'b4' => self::get_image_src( $b_roll, $b_variation + 3, 3, 2 ),
 			'b5' => self::get_image_src( $b_roll, $b_variation + 4, 4, 3 ),
 			'b6' => self::get_image_src( $b_roll, $b_variation + 5, 5, 4 ),
+			'b7' => self::get_image_src( $b_roll, $b_variation + 6, 6, 5 ),
+			'b8' => self::get_image_src( $b_roll, $b_variation + 7, 7, 6 ),
+			'b9' => self::get_image_src( $b_roll, $b_variation + 8, 8, 7 ),
+			'b10' => self::get_image_src( $b_roll, $b_variation + 9, 9, 8 ),
+			'b11' => self::get_image_src( $b_roll, $b_variation + 10, 10, 9 ),
+			'b12' => self::get_image_src( $b_roll, $b_variation + 11, 11, 10 ),
 			'p1' => self::get_image_src( $p_roll, $p_variation, 0 ),
 			'p2' => self::get_image_src( $p_roll, $p_variation + 1, 1 ),
 			'p3' => self::get_image_src( $p_roll, $p_variation + 2, 2, 1 ),
@@ -113,7 +124,7 @@ class Image_Replacer {
 			$imgs['p1'] = self::get_image_src( $a_roll, 0, 0 );
 		}
 		// Handle special contexts
-		if ( $context && ( $context == '18252' ) ) {
+		if ( $pattern_id && ( $pattern_id == '18252' ) ) {
 			// Video 20
 			$card_source = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-scaled.jpg';
 			$card_replacements = array(
@@ -127,7 +138,7 @@ class Image_Replacer {
 			}
 		}
 		// Handle special contexts
-		if ( $context && ( $context == '14499' || $context == '18895' ) ) {
+		if ( $pattern_id && ( $pattern_id == '14499' || $pattern_id == '18895' ) ) {
 			// Cards 21 & Video 23
 			$card_source = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-scaled.jpg';
 			$card_replacements = array(
@@ -146,10 +157,26 @@ class Image_Replacer {
 				$content = self::replace_image_string( $content, $replacement );
 			}
 		}
+		// Handle special contexts
+		if ( $pattern_id && ( $pattern_id == '19168' ) ) {
+			// Video 24
+			$exampleBG =
+			'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-Background-Image.jpg';
+			$card_replacements = array(
+				array( 'from' => $exampleBG, 'to' => $imgs['a1'] ),
+				array( 'from' => $exampleBG, 'to' => $imgs['a1'] ),
+			);
+			foreach ( $card_replacements as $replacement ) {
+				// This needs to replace the first instance of the image for each replacement.
+				$content = self::replace_image_string( $content, $replacement );
+			}
+		}
 		if ( ! empty( $categories[0] ) && ( $categories[0] === 'team' || $categories[0] === 'testimonials' ) ) {
 			// Team and Testimonial People
 			$team_source = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-Portrait-Image-scaled.jpg';
 			$team_source_2 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-819x1024.jpg';
+			$team_source_3 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-150x150.jpg';
+			$team_source_4 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-scaled.jpg';
 			$team_replacements = array(
 				array( 'from' => $team_source, 'to' => $imgs['p1'] ),
 				array( 'from' => $team_source, 'to' => $imgs['p2'] ),
@@ -163,9 +190,80 @@ class Image_Replacer {
 				array( 'from' => $team_source_2, 'to' => $imgs['p3'] ),
 				array( 'from' => $team_source_2, 'to' => $imgs['p2'] ),
 				array( 'from' => $team_source_2, 'to' => $imgs['p1'] ),
+				array( 'from' => $team_source_3, 'to' => $imgs['p1'] ),
+				array( 'from' => $team_source_3, 'to' => $imgs['p2'] ),
+				array( 'from' => $team_source_3, 'to' => $imgs['p3'] ),
+				array( 'from' => $team_source_3, 'to' => $imgs['p4'] ),
+				array( 'from' => $team_source_3, 'to' => $imgs['p5'] ),
+				array( 'from' => $team_source_3, 'to' => $imgs['p6'] ),
+				array( 'from' => $team_source_4, 'to' => $imgs['p1'] ),
+				array( 'from' => $team_source_4, 'to' => $imgs['p2'] ),
+				array( 'from' => $team_source_4, 'to' => $imgs['p3'] ),
+				array( 'from' => $team_source_4, 'to' => $imgs['p4'] ),
 			);
 
 			foreach ( $team_replacements as $replacement ) {
+				// This needs to replace the first instance of the image for each replacement. Have to verify that the needle is in the haystack.
+				$content = self::replace_image_string( $content, $replacement );
+			}
+		}
+
+		if ( ! empty( $categories[0] ) && ( $categories[0] === 'gallery' ) ) {
+			// Gallery
+			$gallery_source = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-scaled.jpg';
+			$gallery_source_2 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-1-scaled.jpg';
+			$gallery_source_3 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-2-scaled.jpg';
+			$gallery_source_4 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-3-scaled.jpg';
+			$gallery_source_5 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-4-scaled.jpg';
+			$gallery_source_6 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-5-scaled.jpg';
+			$gallery_source_7 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-6-scaled.jpg';
+			$gallery_source_8 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-7-scaled.jpg';
+			$gallery_source_9 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-8-scaled.jpg';
+			$gallery_source_10 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-B-Roll-Image-9-scaled.jpg';
+			$gallery_replacements = array(
+				array( 'from' => $gallery_source, 'to' => $imgs['a1'] ),
+				array( 'from' => $gallery_source, 'to' => $imgs['a1'] ),
+				array( 'from' => $gallery_source, 'to' => $imgs['a1'] ),
+				array( 'from' => $gallery_source, 'to' => $imgs['a1'] ),
+				array( 'from' => $gallery_source_2, 'to' => $imgs['a2'] ),
+				array( 'from' => $gallery_source_2, 'to' => $imgs['a2'] ),
+				array( 'from' => $gallery_source_2, 'to' => $imgs['a2'] ),
+				array( 'from' => $gallery_source_2, 'to' => $imgs['a2'] ),
+				array( 'from' => $gallery_source_3, 'to' => $imgs['a3'] ),
+				array( 'from' => $gallery_source_3, 'to' => $imgs['a3'] ),
+				array( 'from' => $gallery_source_3, 'to' => $imgs['a3'] ),
+				array( 'from' => $gallery_source_3, 'to' => $imgs['a3'] ),
+				array( 'from' => $gallery_source_4, 'to' => $imgs['a4'] ),
+				array( 'from' => $gallery_source_4, 'to' => $imgs['a4'] ),
+				array( 'from' => $gallery_source_4, 'to' => $imgs['a4'] ),
+				array( 'from' => $gallery_source_4, 'to' => $imgs['a4'] ),
+				array( 'from' => $gallery_source_5, 'to' => $imgs['a5'] ),
+				array( 'from' => $gallery_source_5, 'to' => $imgs['a5'] ),
+				array( 'from' => $gallery_source_5, 'to' => $imgs['a5'] ),
+				array( 'from' => $gallery_source_5, 'to' => $imgs['a5'] ),
+				array( 'from' => $gallery_source_6, 'to' => $imgs['a6'] ),
+				array( 'from' => $gallery_source_6, 'to' => $imgs['a6'] ),
+				array( 'from' => $gallery_source_6, 'to' => $imgs['a6'] ),
+				array( 'from' => $gallery_source_6, 'to' => $imgs['a6'] ),
+				array( 'from' => $gallery_source_7, 'to' => $imgs['a7'] ),
+				array( 'from' => $gallery_source_7, 'to' => $imgs['a7'] ),
+				array( 'from' => $gallery_source_7, 'to' => $imgs['a7'] ),
+				array( 'from' => $gallery_source_7, 'to' => $imgs['a7'] ),
+				array( 'from' => $gallery_source_8, 'to' => $imgs['a8'] ),
+				array( 'from' => $gallery_source_8, 'to' => $imgs['a8'] ),
+				array( 'from' => $gallery_source_8, 'to' => $imgs['a8'] ),
+				array( 'from' => $gallery_source_8, 'to' => $imgs['a8'] ),
+				array( 'from' => $gallery_source_9, 'to' => $imgs['a9'] ),
+				array( 'from' => $gallery_source_9, 'to' => $imgs['a9'] ),
+				array( 'from' => $gallery_source_9, 'to' => $imgs['a9'] ),
+				array( 'from' => $gallery_source_9, 'to' => $imgs['a9'] ),
+				array( 'from' => $gallery_source_10, 'to' => $imgs['a10'] ),
+				array( 'from' => $gallery_source_10, 'to' => $imgs['a10'] ),
+				array( 'from' => $gallery_source_10, 'to' => $imgs['a10'] ),
+				array( 'from' => $gallery_source_10, 'to' => $imgs['a10'] ),
+			);
+
+			foreach ( $gallery_replacements as $replacement ) {
 				// This needs to replace the first instance of the image for each replacement. Have to verify that the needle is in the haystack.
 				$content = self::replace_image_string( $content, $replacement );
 			}
@@ -506,4 +604,4 @@ class Image_Replacer {
 			array( 'from' => 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/03/mug-product-2-300x300.jpg', 'to' => $imgs['a1'] ),
 		);
 	}
-} 
+}

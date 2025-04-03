@@ -293,7 +293,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 	protected $initial_contexts = array(
 		'about',
 		'achievements',
-		// 'blog',
+		'blog',
 		'call-to-action',
 		// 'careers',
 		'contact-form',
@@ -1981,15 +1981,8 @@ class Library_REST_Controller extends WP_REST_Controller {
 		// $pages = json_decode( $parameters['pages'], true );
 		$image_library = $parameters['image_library'];
 		$pages = $parameters['pages'];
-		$new_pages = array();
-		foreach ( $pages as $page_data ) {
-			// Create page using wp_insert_post.
-			$page_item = array(
-				'post_title'   => ( isset( $page_data['title'] ) ? wp_strip_all_tags( $page_data['title'] ) : '' ),
-				'post_content' => $this->process_page_content( $page_data['content'], $image_library ),
-			);
-			$new_pages[] = $page_item;
-		}
+		$new_pages = Starter_Import_Processes::get_instance()->install_pages_extras( $pages, $image_library );
+
 		if ( empty( $new_pages ) ) {
 			return new WP_Error( 'install_failed', __( 'Install failed.' ), array( 'status' => 500 ) );
 		}
