@@ -256,6 +256,7 @@ class Site_Assist_Tours {
 						'title'     => __( 'Filter Patterns by Category', 'kadence-starter-templates' ),
 						'content'   => __( 'You can filter through hundreds of patterns to find the perfect fit.', 'kadence-starter-templates' ),
 						'placement' => 'right-start',
+						'retract'   => '.kb-prebuilt-header-close',
 					],
 					[
 						'id'        => 'block_editor_color_patterns',

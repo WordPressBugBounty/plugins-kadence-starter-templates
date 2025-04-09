@@ -2610,6 +2610,22 @@ class Starter_Import_Processes {
 				}
 			}
 		}
+		// Check if sitename is longer then 16 characters.
+		if ( strlen( $site_name ) > 16 ) {
+			$logo_font = \Kadence\kadence()->option( 'brand_typography' );
+			if ( isset( $logo_font['size']['desktop'] ) ) {
+				$size = $logo_font['size']['desktop'];
+				$size_type = ( ! empty( $logo_font['sizeType'] ) ? $logo_font['sizeType'] : 'px' );
+				if ( 'px' === $size_type ) {
+					// Make the size 70% of the original size.
+					$size = $size * 0.7;
+					// Round to the nearest whole number.
+					$size = round( $size );
+					$logo_font['size']['desktop'] = $size;
+					set_theme_mod( 'brand_typography', $logo_font );
+				}
+			}
+		}
 		// Setup Learndash.
 		$this->setup_learndash();
 		// Check permalink settings:
@@ -4668,7 +4684,9 @@ class Starter_Import_Processes {
 				$response = $this->get_remote_industry_images( $industries, $image_type, $image_sizes );
 			}
 		}
-
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
 		if ( $response === 'error' ) {
 			return new WP_Error( 'invalid_response', 'Invalid response' );
 		}
@@ -4788,16 +4806,18 @@ class Starter_Import_Processes {
 		);
 
 		// Early exit if there was an error.
-		if ( is_wp_error( $response ) || $this->is_response_code_error( $response ) ) {
-			return 'error';
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
-
+		if ( $this->is_response_code_error( $response ) ) {
+			return new WP_Error( 'invalid_response', 'Invalid response' );
+		}
 		// Get the image JSON from our response.
 		$contents = wp_remote_retrieve_body( $response );
 
 		// Early exit if there was an error.
 		if ( is_wp_error( $contents ) ) {
-			return 'error';
+			return $contents;
 		}
 
 		return $contents;

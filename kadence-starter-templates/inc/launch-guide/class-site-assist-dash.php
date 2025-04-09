@@ -304,6 +304,114 @@ class Site_Assist_Dash {
 		return $tours_filtered;
 	}
 	/**
+	 * Checks if any of the top WordPress caching plugins are active
+	 *
+	 * @return bool|string Returns plugin name if a caching plugin is active, false otherwise
+	 */
+	public function is_other_caching_plugin_active() {
+		// List of top caching plugins and their main plugin files
+		$caching_plugins = array(
+			'WP Rocket' => 'wp-rocket/wp-rocket.php',
+			'W3 Total Cache' => 'w3-total-cache/w3-total-cache.php',
+			'WP Super Cache' => 'wp-super-cache/wp-super-cache.php',
+			'LiteSpeed Cache' => 'litespeed-cache/litespeed-cache.php',
+			'WP Fastest Cache' => 'wp-fastest-cache/wpFastestCache.php',
+			'Cache Enabler' => 'cache-enabler/cache-enabler.php',
+			'FlyingPress' => 'flying-press/flying-press.php',
+		);
+		
+		// Check if any of the caching plugins are active
+		foreach ($caching_plugins as $name => $plugin_file) {
+			if (is_plugin_active($plugin_file)) {
+				return $name; // Return the name of the active caching plugin
+			}
+		}
+		
+		return false; // No caching plugin is active
+	}
+	/**
+	 * Get Security Data
+	 */
+	public function get_performance_data() {
+		$performance_data    = [
+			'plugin_state'      => 'notactive',
+			'plugin_state_link' => 'solid-performance',
+			'caching'    => false,
+			'lazy_loading'    => false,
+			'htaccess' => false,
+		];
+		$performance_data['plugin_state'] = Plugin_Check::active_check( 'solid-performance/solid-performance.php' );
+		if ( defined( 'SWPSP_PLUGIN_FILE' ) ) { 
+			$settings = get_option( 'solid_performance_settings', [] );
+			if ( isset( $settings['page_cache']['enabled'] ) && true === $settings['page_cache']['enabled'] ) {
+				$performance_data['caching'] = true;
+			}
+			if ( isset( $settings['page_cache']['lazy_loading']['enabled'] ) && true === $settings['page_cache']['lazy_loading']['enabled'] ) {
+				$performance_data['lazy_loading'] = true;
+			}
+			if ( isset( $settings['page_cache']['cache_delivery']['method'] ) && 'htaccess' === $settings['page_cache']['cache_delivery']['method'] ) {
+				$performance_data['htaccess'] = true;
+			}
+		}
+		if ( $performance_data['plugin_state'] === 'notactive' ) {
+			// Make sure is_plugin_active function is available
+			if ( ! function_exists('is_plugin_active' ) ) {
+				include_once(ABSPATH . 'wp-admin/includes/plugin.php');
+			}
+			$active_caching_plugin = $this->is_other_caching_plugin_active();
+			if ( $active_caching_plugin ) {
+				return [];
+			}
+		}
+		$return_data = [
+			'title'       => __( 'Website Performance Setup', 'kadence-starter-templates' ),
+			'description' => __( 'Set up the solid performance caching plugin to make sure your site loads fast.', 'kadence-starter-templates' ),
+			'slug'        => 'performance-setup',
+			'tasks'       => [
+				[
+					'title'        => ( 'installed' === $performance_data['plugin_state'] ? __( 'Activate Performance plugin', 'kadence-starter-templates' ) : __( 'Install Performance plugin', 'kadence-starter-templates' ) ),
+					'description'  => __( 'Install and Activate the Solid Performance plugin.', 'kadence-starter-templates' ),
+					'button'       => 'installed' === $performance_data['plugin_state'] ? __( 'Activate', 'kadence-starter-templates' ) : __( 'Install', 'kadence-starter-templates' ),
+					'link'         => $performance_data['plugin_state_link'],
+					'action'       => 'install_plugin',
+					'completed'    => 'active' === $performance_data['plugin_state'] ? true : false,
+					'plugin_state' => $performance_data['plugin_state'],
+					'enables'      => 'next',
+				],
+				[
+					'title'        => __( 'Enable Page Caching', 'kadence-starter-templates' ),
+					'description'  => __( 'Enable page caching to make sure your site loads fast.', 'kadence-starter-templates' ),
+					'button'       => $performance_data['caching'] ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Enable', 'kadence-starter-templates' ),
+					'link'         => admin_url( 'options-general.php?page=swpsp-settings' ),
+					'completed'    => $performance_data['caching'] ? true : false,
+					'requires'    => $performance_data['plugin_state'] === 'active' ? false : true,
+					'sameTab'     => true,
+				],
+				[
+					'title'        => __( 'Enable Lazy Load Images', 'kadence-starter-templates' ),
+					'description'  => __( 'Enable lazy load images to make sure your site loads fast.', 'kadence-starter-templates' ),
+					'button'       => $performance_data['lazy_loading'] ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Enable', 'kadence-starter-templates' ),
+					'link'         => admin_url( 'options-general.php?page=swpsp-settings' ),
+					'completed'    => $performance_data['lazy_loading'] ? true : false,
+					'requires'    => $performance_data['plugin_state'] === 'active' ? false : true,
+					'sameTab'     => true,
+				],
+			],
+		];
+		if ( class_exists( '\StellarWP\StellarSites\Plugin' ) ) {
+			$return_data['tasks'][] = [
+				'title'        => __( 'Enable htaccess Delivery', 'kadence-starter-templates' ),
+				'description'  => __( 'Enable "htaccess" delivery to bypass PHP and improve the performance of your site when cached.', 'kadence-starter-templates' ),
+				'button'       => $performance_data['htaccess'] ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Enable', 'kadence-starter-templates' ),
+				'link'         => admin_url( 'options-general.php?page=swpsp-settings' ),
+				'completed'    => $performance_data['htaccess'] ? true : false,
+				'requires'    => $performance_data['plugin_state'] === 'active' ? false : true,
+				'sameTab'     => true,
+			];
+		}
+		return $return_data;
+	}
+	/**
 	 * Get Security Data
 	 */
 	public function get_donation_data() {
@@ -389,7 +497,6 @@ class Site_Assist_Dash {
 				],
 			],
 		];
-		return $donation_data;
 	}
 	/**
 	 * Get Security Data
@@ -432,7 +539,7 @@ class Site_Assist_Dash {
 			$security_data['firewall'] = true;
 		}
 
-		$return_data =[
+		$return_data = [
 			'title'       => __( 'Site Security Setup', 'kadence-starter-templates' ),
 			'description' => __( 'Set up important security standards to prevent hacks and malware.', 'kadence-starter-templates' ),
 			'slug'        => 'site-security',
@@ -470,7 +577,7 @@ class Site_Assist_Dash {
 		if ( $security_data['plugin_state_link'] !== 'better-wp-security' ) {
 			$return_data['tasks'][] = [
 				'title'       => __( '(Recommended) Enable Trusted Devices', 'kadence-starter-templates' ),
-				'description' => __( 'Trusted Devices identifies the devices users use to login and can apply additional restrictions to unknown devices.', 'kadence-starter-templates' ),
+				'description' => __( 'Trusted Devices identifies the devices users use to log in and can apply additional restrictions to unknown devices.', 'kadence-starter-templates' ),
 				'button'      => ! empty( $security_data['trusted_devices'] ) ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 				'link'        => admin_url( 'admin.php?page=itsec&path=%2Fsettings%2Fconfigure%2Flogin' ),
 				'completed'   => ! empty( $security_data['trusted_devices'] ) ? true : false,
@@ -646,6 +753,7 @@ class Site_Assist_Dash {
 		}
 		$security_data = $this->get_security_data();
 		$email_data = $this->get_email_data( $site_assist_data );
+		$performance_data = $this->get_performance_data();
 		require_once ABSPATH . 'wp-admin/includes/translation-install.php';
 		$translations = wp_get_available_translations();
 		$current_language = get_locale();
@@ -720,7 +828,7 @@ class Site_Assist_Dash {
 						'sameTab'     => true,
 					],
 					[
-						'title'       => __( 'Setup Site AI Profile', 'kadence-starter-templates' ),
+						'title'       => __( 'Set up Site AI Profile', 'kadence-starter-templates' ),
 						'description' => __( 'Set up your site AI profile to get started with your new site.', 'kadence-starter-templates' ),
 						'button'      => $has_ai_profile ? __( 'Edit', 'kadence-starter-templates' ) : __( 'Set Up', 'kadence-starter-templates' ),
 						'link'        => admin_url( 'admin.php?page=kadence-starter-templates&ai=wizard' ),
@@ -729,8 +837,8 @@ class Site_Assist_Dash {
 						'sameTab'     => true,
 					],
 					[
-						'title'       => __( 'Import Starter Site', 'kadence-starter-templates' ),
-						'description' => __( 'Import a starter site to get started with your new site.', 'kadence-starter-templates' ),
+						'title'       => __( 'Import AI Starter Site', 'kadence-starter-templates' ),
+						'description' => __( 'Import an AI Starter Site to get started with your new site.', 'kadence-starter-templates' ),
 						'button'      => $has_previous ? __( 'Re-Import', 'kadence-starter-templates' ) : __( 'Import', 'kadence-starter-templates' ),
 						'link'        => admin_url( 'admin.php?page=kadence-starter-templates' ),
 						'completed'   => $has_previous,
@@ -884,8 +992,28 @@ class Site_Assist_Dash {
 		if ( !empty ( $security_data ) ) {
 			$return_data[] = $security_data;
 		}
+		if ( !empty ( $performance_data ) ) {
+			$return_data[] = $performance_data;
+		}
 		if ( !empty ( $donation_data ) ) {
 			$return_data[] = $donation_data;
+		}
+		if ( class_exists( '\StellarWP\StellarSites\Plugin' ) ) {
+			$return_data[] = [
+				'title'       => __( 'Ready to Launch', 'kadence-starter-templates' ),
+				'description' => __( 'Get ready to launch your new site.', 'kadence-starter-templates' ),
+				'slug'        => 'ready-to-launch',
+				'tasks'       => [
+					[
+						'title'       => __( 'Turn Off Coming Soon Mode', 'kadence-starter-templates' ),
+						'description' => __( 'Turn off the coming soon mode that temporarily hides your site.', 'kadence-starter-templates' ),
+						'button'      => __( 'Edit', 'kadence-starter-templates' ),
+						'link'        => admin_url( 'admin.php?page=stellarsites' ),
+						'completed'   => get_option( 'stellarsites_coming_soon' ) ? false : true,
+						'sameTab'     => true,
+					]
+				],
+			];
 		}
 		return $return_data;
 	}

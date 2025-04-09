@@ -3,7 +3,7 @@ Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
 Tested up to: 6.7
-Stable tag: 2.2.3
+Stable tag: 2.2.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -125,8 +125,13 @@ developers of this plugin.
 
 == Changelog ==
 
+= 2.2.4 =
+* Update: Add performance in todos.
+* Update: Improve AI image replace.
+* Update: Improve how long site names are handled.
+
 = 2.2.3 =
-* Update: Improve importing images
+* Update: Improve importing images.
 
 = 2.2.2 =
 * Update: Improve image replace with AI templates.

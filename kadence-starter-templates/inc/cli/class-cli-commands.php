@@ -258,6 +258,18 @@ class CLI_Commands {
 				'timeout' => 20,
 			)
 		);
+		$temp_site_name = get_option( 'blogname' );
+		// if the temp site name contains .nxcli.io then set it to the site url as a better temp name.
+		if ( strpos( $temp_site_name, '.nxcli.io' ) !== false ) {
+			// Get site url.
+			$site_url = get_option( 'siteurl' );
+			if ( ! empty( $site_url ) ) {
+				// Get the domain from the site url.
+				$domain = wp_parse_url( $site_url, PHP_URL_HOST );
+				// Update the site name to the domain.
+				update_option( 'blogname', $domain );
+			}
+		}
 		// Early exit if there was an error.
 		if ( is_wp_error( $response ) ) {
 			WP_CLI::log( 'Failed to get import selection data: ' . $response->get_error_message() );
@@ -303,6 +315,10 @@ class CLI_Commands {
 			unset( $this->import_selection_data['ai_data']['ai_request_id'] );
 		}
 		update_option( 'kadence_blocks_prophecy', wp_json_encode( $this->import_selection_data['ai_data'] ) );
+		if ( ! empty( $this->import_selection_data['ai_data']['timezone'] ) ) {
+			update_option( 'timezone_string', $this->import_selection_data['ai_data']['timezone'] );
+		}
+
 		$base_site = Starter_Import_Processes::get_instance()->get_ai_base_site( $this->import_key );
 		if ( is_wp_error( $base_site ) ) {
 			WP_CLI::error( 'Failed to get ai base site: ' . $base_site->get_error_message() );
@@ -325,12 +341,11 @@ class CLI_Commands {
 		}
 		// Get team image collection.
 		$team_image_collection = Starter_Import_Processes::get_instance()->get_images_by_industry( ['Other'], '', 'JPEG', [], false );
-		if ( empty( $team_image_collection ) || is_wp_error( $team_image_collection ) ) {
-			WP_CLI::error( 'Failed to get team image collection: ' . $team_image_collection->get_error_message() );
-			return;
+		if ( is_wp_error( $team_image_collection ) ) {
+			WP_CLI::log(  'Failed to get team image collection: ' . $team_image_collection->get_error_message() );
 		}
 		update_option( '_kadence_starter_templates_last_import_data', array( $this->import_key ), 'no' );
-		$this->team_image_collection = $team_image_collection;
+		$this->team_image_collection = ! empty( $team_image_collection ) && is_array( $team_image_collection ) ? $team_image_collection : [];
 		Starter_Import_Processes::get_instance()->trigger_writing_cache();
 	}
 
