@@ -270,6 +270,12 @@ class Site_Assist_Dash {
 				'url'   => 'https://solidwp.com/documentation/security/',
 			];
 		}
+		if ( class_exists( 'SWPSP_PLUGIN_FILE' ) ) {
+			$knowledge_bases[] = [
+				'title' => __( 'Solid Performance', 'kadence-starter-templates' ),
+				'url'   => 'https://solidwp.com/documentation/performance/',
+			];
+		}
 		if ( class_exists( '\Give' ) ) {
 			$knowledge_bases[] = [
 				'title' => __( 'GiveWP', 'kadence-starter-templates' ),
@@ -666,7 +672,7 @@ class Site_Assist_Dash {
 			'tasks'       => [
 				[
 					'title'        => ( 'installed' === $email_data['plugin_state'] ? __( 'Activate SMTP plugin', 'kadence-starter-templates' ) : __( 'Install SMTP plugin', 'kadence-starter-templates' ) ),
-					'description'  => __( 'Install and Activate the SMTP plugin.', 'kadence-starter-templates' ),
+					'description'  => __( 'By default, WordPress uses the PHP mail send out site-related messages (such as password resets, contact form notifications, and order notifications). However, this default method often runs into problems with email reliability and deliverability because the source can cause email providers to flag the email as spam. An SMTP (Simple Mail Transfer Protocol) plugin bypasses those limitations by authenticating and relaying your site\'s emails through a trusted mail server. This improves the overall reliability of email delivery and reduces the chances of messages being blocked or ending up in spam folders. Install and Activate the SMTP plugin.', 'kadence-starter-templates' ),
 					'button'       => 'installed' === $email_data['plugin_state'] ? __( 'Activate', 'kadence-starter-templates' ) : __( 'Install', 'kadence-starter-templates' ),
 					'link'         => $email_data['plugin_state_link'],
 					'action'       => 'install_plugin',
@@ -676,7 +682,7 @@ class Site_Assist_Dash {
 				],
 				[
 					'title'        => __( 'Configure Email Connection', 'kadence-starter-templates' ),
-					'description'  => __( 'Configure the SMTP plugin to connect to your email provider.', 'kadence-starter-templates' ),
+					'description'  => __( 'Configure the SMTP plugin to connect to your email provider. An SMTP (Simple Mail Transfer Protocol) connection authenticates and relays your site\'s emails through a trusted mail server. This improves the overall reliability of email delivery and reduces the chances of messages being blocked or ending up in spam folders. ', 'kadence-starter-templates' ),
 					'button'       => __( 'Configure', 'kadence-starter-templates' ),
 					'link'         => admin_url( 'admin.php?page=solidwp-mail' ),
 					'completed'    => $email_data['plugin_setup'] ? true : false,
@@ -685,7 +691,7 @@ class Site_Assist_Dash {
 				],
 				[
 					'title'        => __( 'Test Email Connection', 'kadence-starter-templates' ),
-					'description'  => __( 'Test the email connection to make sure it is working.', 'kadence-starter-templates' ),
+					'description'  => __( 'Test the email connection to make sure it is working and emails are arriving in your inbox.', 'kadence-starter-templates' ),
 					'button'       => __( 'Test', 'kadence-starter-templates' ),
 					'link'         => admin_url( 'admin.php?page=solidwp-mail#/email-test' ),
 					'completed'    => $email_data['plugin_verified'] ? true : false,

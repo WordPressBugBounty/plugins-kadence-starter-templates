@@ -47,9 +47,11 @@ use WC_Product_Attribute;
 use WP_Error;
 use WC_Install;
 use WP_Query;
+use LearnDash_Settings_Section;
 use function sanitize_file_name;
 use function wp_safe_remote_get;
 use function flush_rewrite_rules;
+use function wp_cache_flush;
 use function wp_send_json;
 use function wp_remote_get;
 use function wp_remote_retrieve_body;
@@ -1703,6 +1705,7 @@ class Starter_Import_Processes {
 							$page_id = wp_insert_post(
 								array(
 								'post_title'   => 'Courses',
+								'post_name'    => 'our-courses',
 								'post_content' => $page_content,
 								'post_status'  => 'publish',
 								'post_type'    => 'page',
@@ -1710,6 +1713,7 @@ class Starter_Import_Processes {
 							);
 							if ( ! is_wp_error( $page_id ) ) {
 								update_post_meta( $page_id, '_kadence_starter_templates_imported_post', true );
+								update_post_meta( $page_id, '_kad_post_layout', 'normal' );
 								$args = array(
 									'menu-item-title'     => 'Courses',
 									'menu-item-object-id' => $page_id,
@@ -1938,6 +1942,7 @@ class Starter_Import_Processes {
 			}
 		}
 		flush_rewrite_rules();
+		wp_cache_flush();
 		return true;
 	}
 	/**
@@ -2635,6 +2640,8 @@ class Starter_Import_Processes {
 		if ( empty( $current_permalink_structure ) ) {
 			update_option( 'permalink_structure', '/%postname%/' );
 		}
+		// Flush Permalinks.
+		flush_rewrite_rules();
 
 		return true;
 	}
@@ -3340,6 +3347,10 @@ class Starter_Import_Processes {
 		$instance = \LearnDash_Settings_Section::get_section_instance( 'LearnDash_Settings_Theme_LD30' );
 		$instance::set_setting( 'color_primary', 'var(--global-palette1, #0073aa)' );
 		$instance::set_setting( 'color_secondary', 'var(--global-palette2, #215387)' );
+		// Enable login and registration.
+		$instance::set_setting( 'login_mode_enabled', 'yes' );
+		// Focused mode.
+		$instance::set_setting( 'focus_mode_enabled', 'yes' );
 
 		// LearnDash Page Settings.
 		$ld_page_instance = \LearnDash_Settings_Section::get_section_instance( 'LearnDash_Settings_Section_Registration_Pages' );
@@ -3409,6 +3420,8 @@ class Starter_Import_Processes {
 		// Update Lesson Layout.
 		set_theme_mod( 'sfwd-lessons_layout', 'narrow' );
 		set_theme_mod( 'sfwd-lessons_content_style', 'unboxed' );
+		// Make sure anyone can register.
+		update_option( 'users_can_register', 1 );
 
 		return;
 	}
@@ -4185,9 +4198,9 @@ class Starter_Import_Processes {
 							$image_url = $this->extract_image_url_from_block_content( $block['innerHTML'] );
 							if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
 								$block['innerHTML'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerHTML'] );
-								$block['innerHTML'] = str_replace( 'wp-image-' . $block['attrs']['id'], 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
+								$block['innerHTML'] = str_replace( 'wp-image-' . !empty( $block['attrs']['id'] ) ? $block['attrs']['id'] : '', 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
 								$block['innerContent'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerContent'] );
-								$block['innerContent'] = str_replace( 'wp-image-' . $block['attrs']['id'], 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
+								$block['innerContent'] = str_replace( 'wp-image-' . !empty( $block['attrs']['id'] ) ? $block['attrs']['id'] : '', 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
 								$block['attrs']['id'] = absint( $map_urls[ $image_url ]['id'] );
 								$block['attrs']['globalAlt'] = true;
 							}

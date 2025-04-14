@@ -521,7 +521,7 @@ class CLI_Commands {
 		}
 		$course = Starter_Import_Processes::get_instance()->install_course();
 		if ( is_wp_error( $course ) ) {
-			WP_CLI::error( 'Failed to install course: ' . $course->get_error_message() );
+			WP_CLI::log( 'Failed to install course: ' . $course->get_error_message() );
 			return;
 		}
 	}
