@@ -1321,7 +1321,7 @@ class Starter_Import_Processes {
 			}
 			// Don't output sections that don't match the goals.
 			if ( $row_condition !== '' && $row_condition !== 'general' ) {
-				if ( $row_condition === 'replace' && ( in_array( 'ecommerce', $goals ) || in_array( 'events', $goals ) || in_array( 'donations', $goals ) || in_array( 'learning', $goals ) || in_array( 'membership', $goals ) || in_array( 'photography', $goals ) || in_array( 'landing', $goals ) ) || in_array( 'blogging', $goals ) ) {
+				if ( $row_condition === 'replace' && ( in_array( 'ecommerce', $goals ) || in_array( 'events', $goals ) || in_array( 'donations', $goals ) || in_array( 'learning', $goals ) || in_array( 'membership', $goals ) || in_array( 'photography', $goals ) || in_array( 'landing', $goals ) || in_array( 'blogging', $goals ) ) ) {
 					continue;
 				} else if ( ! in_array( $row_condition, $goals ) ) {
 					continue;
@@ -2909,16 +2909,30 @@ class Starter_Import_Processes {
 		$i = 0;
 		$prepared_products = array();
 		foreach ( $products as $product_data ) {
-			$product_json = json_encode( $product_data, true );
-			$product_json = Image_Replacer::replace_images(
-				$product_json,
-				$image_library,
-				[],
-				'',
-				$i,
-				[],
-			);
-			$prepared_products[] = json_decode( $product_json, true );
+			if ( ! empty( $product_data['image'][0]['src'] ) ) {
+				$product_data['image'][0]['src'] = Image_Replacer::replace_images(
+					$product_data['image'][0]['src'],
+					$image_library,
+					[],
+					'',
+					$i,
+					[],
+				);
+			}
+			if ( ! empty( $product_data['gallery_images'] ) ) {
+				// Replace the images in the gallery images.
+				foreach ( $product_data['gallery_images'] as $key => $gallery_image ) {
+					$product_data['gallery_images'][ $key ]['src'] = Image_Replacer::replace_images(
+						$gallery_image['src'],
+						$image_library,
+						[],
+						'',
+						$i,
+						[],
+					);
+				}
+			}
+			$prepared_products[] = $product_data;
 			$i++;
 		}
 		return $prepared_products;
@@ -4197,10 +4211,11 @@ class Starter_Import_Processes {
 							// We need to extract the url from $block['innerHTML'].
 							$image_url = $this->extract_image_url_from_block_content( $block['innerHTML'] );
 							if ( !empty( $image_url ) && isset( $map_urls[ $image_url ] ) ) {
+								$current_id = ( !empty( $block['attrs']['id'] ) ) ? $block['attrs']['id'] : '';
 								$block['innerHTML'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerHTML'] );
-								$block['innerHTML'] = str_replace( 'wp-image-' . !empty( $block['attrs']['id'] ) ? $block['attrs']['id'] : '', 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
+								$block['innerHTML'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerHTML'] );
 								$block['innerContent'] = str_replace( $image_url, $map_urls[ $image_url ]['url'], $block['innerContent'] );
-								$block['innerContent'] = str_replace( 'wp-image-' . !empty( $block['attrs']['id'] ) ? $block['attrs']['id'] : '', 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
+								$block['innerContent'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
 								$block['attrs']['id'] = absint( $map_urls[ $image_url ]['id'] );
 								$block['attrs']['globalAlt'] = true;
 							}

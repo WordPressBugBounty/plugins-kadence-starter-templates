@@ -2,8 +2,8 @@
 Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
-Tested up to: 6.7
-Stable tag: 2.2.5
+Tested up to: 6.8
+Stable tag: 2.2.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -124,6 +124,12 @@ assist you with verification, CVE assignment, and notify the
 developers of this plugin.
 
 == Changelog ==
+
+= 2.2.6 =
+Release Date: 16th April 2025
+* Fix: Issue importing goal related content.
+* Fix: Issue handling product images.
+* Fix: Issue with some images showing broken.
 
 = 2.2.5 =
 Release Date: 14th April 2025

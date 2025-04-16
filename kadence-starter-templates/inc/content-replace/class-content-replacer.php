@@ -39,6 +39,10 @@ class Content_Replacer {
             return $content;
         }
 
+        if ( !empty( $context ) && $context === 'product-loop' ) {
+            $context = 'products-services';
+        }
+
         if (!isset($ai_content[$context]['content'])) {
             return $content;
         }
@@ -113,7 +117,7 @@ class Content_Replacer {
                 $content = self::process_featured_products_content($content, $base_content, $context_ai, $context, $is_html);
                 break;
             case 'product-loop':
-                $content = self::process_product_loop_content($content, $base_content, $columns_content);
+                $content = self::process_product_loop_content($content, $base_content, $columns_content, $context_ai, $context);
                 break;
             case 'form':
                 $content = self::process_form_content($content, $base_content, $ai_content);
@@ -1535,7 +1539,8 @@ class Content_Replacer {
      * @param array  $columns_content The columns content.
      * @return string
      */
-    private static function process_product_loop_content($content, $base_content, $columns_content) {
+    private static function process_product_loop_content($content, $base_content, $columns_content, $context_ai, $context) {
+        $hero_content = self::find_content_by_id($context_ai, $context . '-hero');
         // Process various content types
         $replacements = [
             ['heading', 'short', 'Type a short headline'],
@@ -1551,6 +1556,15 @@ class Content_Replacer {
         ];
 
         foreach ($replacements as [$type, $length, $search]) {
+            if (isset($hero_content[$type][$length])) {
+                if (is_array($search)) {
+                    foreach ($search as $s) {
+                        $content = str_replace($s, $hero_content[$type][$length], $content);
+                    }
+                } else {
+                    $content = str_replace($search, $hero_content[$type][$length], $content);
+                }
+            }
             if (isset($base_content[$type][$length])) {
                 if (is_array($search)) {
                     foreach ($search as $s) {
