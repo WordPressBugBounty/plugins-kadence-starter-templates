@@ -1017,6 +1017,12 @@ class Starter_Templates {
 				'state' => Plugin_Check::active_check( 'better-wp-security/better-wp-security.php' ),
 				'src'   => 'repo',
 			),
+			'solid-performance' => array(
+				'title' => 'Solid Performance',
+				'description' => __( 'Solid Performance is a plugin that adds page caching, lazy loading, and more.', 'kadence-starter-templates' ),
+				'state' => Plugin_Check::active_check( 'solid-performance/solid-performance.php' ),
+				'src'   => 'repo',
+			),
 		);
 		$palettes = array(
 			array(
@@ -1514,6 +1520,12 @@ class Starter_Templates {
 					'path'  => 'seriously-simple-podcasting/seriously-simple-podcasting.php',
 					'src'   => 'repo',
 				),
+				'solid-performance' => array(
+					'title' => 'Solid Performance',
+					'base'  => 'solid-performance',
+					'slug'  => 'solid-performance',
+					'path'  => 'solid-performance/solid-performance.php',
+				),
 			);
 			$plugin_information = array();
 			foreach( $info['plugins'] as $plugin ) {
@@ -1797,6 +1809,13 @@ class Starter_Templates {
 					'base'  => 'seriously-simple-podcasting',
 					'slug'  => 'seriously-simple-podcasting',
 					'path'  => 'seriously-simple-podcasting/seriously-simple-podcasting.php',
+					'src'   => 'repo',
+				),
+				'solid-performance' => array(
+					'title' => 'Solid Performance',
+					'base'  => 'solid-performance',
+					'slug'  => 'solid-performance',
+					'path'  => 'solid-performance/solid-performance.php',
 					'src'   => 'repo',
 				),
 			);

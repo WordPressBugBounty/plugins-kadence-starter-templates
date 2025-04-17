@@ -346,6 +346,13 @@ class Plugin_Installer {
 				'path'  => 'wp-smtp/wp-smtp.php',
 				'src'   => 'repo',
 			),
+			'solid-performance' => array(
+				'title' => 'Solid Performance',
+				'base'  => 'solid-performance',
+				'slug'  => 'solid-performance',
+				'path'  => 'solid-performance/solid-performance.php',
+				'src'   => 'repo',
+			),
 		);
 		return $importer_plugins;
 	}

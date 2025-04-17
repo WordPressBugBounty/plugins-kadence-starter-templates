@@ -207,6 +207,19 @@ class Image_Replacer {
 				$content = self::replace_image_string( $content, $replacement );
 			}
 		}
+		if ( ! empty( $categories[0] ) && ( $categories[0] === 'video' ) ) {
+			// Video
+			$video_source = '"img":"https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-scaled.jpg"';
+			$video_source_2 = 'https://patterns.startertemplatecloud.com/wp-content/uploads/2023/02/Example-A-Roll-Image-scaled.jpg';
+			$video_replacements = array(
+				array( 'from' => $video_source, 'to' => '"img":"' . $imgs['a1'] . '"' ),
+				array( 'from' => $video_source_2, 'to' => $imgs['a1'] ),
+			);
+			foreach ( $video_replacements as $replacement ) {
+				// This needs to replace the first instance of the image for each replacement. Have to verify that the needle is in the haystack.
+				$content = self::replace_image_string( $content, $replacement );
+			}
+		}
 
 		if ( ! empty( $categories[0] ) && ( $categories[0] === 'gallery' ) ) {
 			// Gallery

@@ -465,6 +465,7 @@ class Starter_Import_Processes {
 		$error_messages = [];
 		if ( ! empty( $available_prompts ) && is_array( $available_prompts ) ) {
 			foreach ( $available_prompts as $context => $prompt ) {
+				error_log( 'get_all_local_ai_items context: ' . $context );
 				// Check local cache.
 				try {
 					$return_data[ $context ] = json_decode( $this->ai_cache->get( $available_prompts[ $context ] ), true );
@@ -474,6 +475,18 @@ class Starter_Import_Processes {
 					if ( is_wp_error( $response ) ) {
 						$has_error = true;
 						$error_messages[] = $response->get_error_message();
+					} else if ( !empty( $response ) && is_string( $response ) && 'error' === $response ) {
+						$error_messages[] = 'Unknown Error';
+						$has_error = true;
+					} else if ( !empty( $response ) && is_string( $response ) && 'not-found' === $response ) {
+						$error_messages[] = 'Not Found';
+						$has_error = true;
+						// Clean up, the token and job are no longer valid.
+						$current_prompts = get_option( 'kb_design_library_prompts', [] );
+						if ( isset( $current_prompts[ $context ] ) ) {
+							unset( $current_prompts[ $context ] );
+							update_option( 'kb_design_library_prompts', $current_prompts );
+						}
 					} else { 
 						$data     = json_decode( $response, true );
 						if ( $response === 'processing' || isset( $data['data']['status'] ) && 409 === $data['data']['status'] ) {
@@ -532,6 +545,9 @@ class Starter_Import_Processes {
 		$response_code = (int) wp_remote_retrieve_response_code( $response );
 		if ( 409 === $response_code ) {
 			return 'processing';
+		}
+		if ( 404 === $response_code ) {
+			return 'not-found';
 		}
 		if ( $this->is_response_code_error( $response ) ) {
 			return 'error';
@@ -5306,6 +5322,13 @@ class Starter_Import_Processes {
 				'base'  => 'better-wp-security',
 				'slug'  => 'better-wp-security',
 				'path'  => 'better-wp-security/better-wp-security.php',
+				'src'   => 'repo',
+			),
+			'solid-performance' => array(
+				'title' => 'Solid Performance',
+				'base'  => 'solid-performance',
+				'slug'  => 'solid-performance',
+				'path'  => 'solid-performance/solid-performance.php',
 				'src'   => 'repo',
 			),
 		);

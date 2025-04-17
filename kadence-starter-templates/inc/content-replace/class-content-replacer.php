@@ -57,6 +57,7 @@ class Content_Replacer {
         $video_content = self::find_content_by_id($context_ai, $context . '-videos');
         $tabs_content = self::find_content_by_id($context_ai, $context . '-tabs');
         $accordion_content = self::find_content_by_id($context_ai, $context . '-accordion');
+        $base_testimonial_content = !empty($ai_content['testimonials']['content']) ? self::find_content_by_id($ai_content['testimonials']['content'], 'testimonials-testimonials') : [];
 
         // Process content based on category
         switch ($current_category) {
@@ -67,6 +68,7 @@ class Content_Replacer {
                 $content = self::process_text_content($content, $base_content, $columns_content);
                 break;
             case 'hero':
+            case 'call-to-action':
                 $content = self::process_hero_content($content, $base_content, $context_ai, $context);
                 break;
             case 'image':
@@ -126,7 +128,7 @@ class Content_Replacer {
                 $content = self::process_table_of_contents_content($content, $base_content, $context_ai, $context);
                 break;
             case 'counter-or-stats':
-                $content = self::process_counter_or_stats_content($content, $base_content, $context_ai, $context, $is_html);
+                $content = self::process_counter_or_stats_content($content, $base_content, $context_ai, $base_testimonial_content, $context, $is_html);
                 break;
             case 'list':
                 $content = self::process_list_content($content, $base_content, $context_ai, $context, $is_html);
@@ -581,14 +583,39 @@ class Content_Replacer {
             );
         }
 
-        // Paragraph
-        if (isset($base_content['sentence']['short'])) {
+        // Headline long
+        if (isset($base_content['heading']['long'])) {
             $content = str_replace(
-                'Use this paragraph section to get your website visitors to know you. Consider writing about you or your organization, the products or services you offer, or why you exist. Keep a consistent communication style.',
+                'Write a compelling and inviting headline to re-hook your visitors through your content.',
+                $base_content['heading']['long'],
+                $content
+            );
+        }
+         // Paragraph
+         if (isset($base_content['sentence']['short'])) {
+            $content = str_replace(
+                'Use this paragraph to provide more insights writing with clear and concise language that is easy to understand. Edit and proofread your content.',
                 $base_content['sentence']['short'],
                 $content
             );
         }
+        // Paragraph
+        if (isset($base_content['sentence']['medium'])) {
+            $content = str_replace(
+                'Use this paragraph section to get your website visitors to know you. Consider writing about you or your organization, the products or services you offer, or why you exist. Keep a consistent communication style.',
+                $base_content['sentence']['medium'],
+                $content
+            );
+        }
+        // Paragraph
+        if (isset($base_content['sentence']['long'])) {
+            $content = str_replace(
+                'Use this paragraph section to get your website visitors to know you. Write about you or your organization, the products or services you offer, or why you exist. Keep a consistent communication style. Consider using this if you need to provide more context on why you do what you do. Be engaging. Focus on delivering value to your visitors.',
+                $base_content['sentence']['long'],
+                $content
+            );
+        }
+        
 
         // Overline
         if (isset($base_content['overline']['short'])) {
@@ -1024,13 +1051,43 @@ class Content_Replacer {
         $testimonial_content = self::find_content_by_id($context_ai, $context . '-testimonials');
 
         // Overline
-        if (isset($base_content['overline']['short'])) {
+        if (isset($testimonial_content['overline']['short'])) {
+            $replacements = ['ADD AN OVERLINE', 'Add an overline', 'Overline'];
+            foreach ($replacements as $replacement) {
+                $content = str_replace($replacement, $testimonial_content['overline']['short'], $content);
+            }
+        } elseif (isset($base_content['overline']['short'])) {
             $replacements = ['ADD AN OVERLINE', 'Add an overline', 'Overline'];
             foreach ($replacements as $replacement) {
                 $content = str_replace($replacement, $base_content['overline']['short'], $content);
             }
         }
-
+        // Button
+        if (isset($testimonial_content['button']['short'])) {
+            $replacements = ['Call To Action', 'Call to Action'];
+            foreach ($replacements as $replacement) {
+                $content = str_replace($replacement, $testimonial_content['button']['short'], $content);
+            }
+        } elseif (isset($base_content['button']['short'])) {
+            $replacements = ['Call To Action', 'Call to Action'];
+            foreach ($replacements as $replacement) {
+                $content = str_replace($replacement, $base_content['button']['short'], $content);
+            }
+        }
+        // Headline short
+        if (isset($testimonial_content['heading']['short'])) {
+            $content = str_replace(
+                'Type a short headline',
+                $testimonial_content['heading']['short'],
+                $content
+            );
+        } elseif (isset($base_content['heading']['short'])) {
+            $content = str_replace(
+                'Type a short headline',
+                $base_content['heading']['short'],
+                $content
+            );
+        }
         // Headline medium
         if (isset($testimonial_content['heading']['medium'])) {
             $content = str_replace(
@@ -1062,6 +1119,20 @@ class Content_Replacer {
                     $pos = strpos($content, $replacement);
                     if (false !== $pos) {
                         $content = substr_replace($content, $testimonial['customer'], $pos, strlen($replacement));
+                    }
+                }
+                if (isset($testimonial['customer-name'])) {
+                    $replacement = 'Customer Name';
+                    $pos = strpos($content, $replacement);
+                    if (false !== $pos) {
+                        $content = substr_replace($content, $testimonial['customer-name'], $pos, strlen($replacement));
+                    }
+                }
+                if (isset($testimonial['customer-occupation'])) {
+                    $replacement = 'Customer Title';
+                    $pos = strpos($content, $replacement);
+                    if (false !== $pos) {
+                        $content = substr_replace($content, $testimonial['customer-occupation'], $pos, strlen($replacement));
                     }
                 }
                 if (isset($testimonial['testimonial'])) {
@@ -1437,7 +1508,25 @@ class Content_Replacer {
         if (isset($base_content['heading']['short'])) {
             $content = str_replace('Add a succinct headline', $base_content['heading']['short'], $content);
         }
-
+        if (isset($base_content['heading']['medium'])) {
+            $content = str_replace('Briefly and concisely explain what you do for your audience.', $base_content['heading']['medium'], $content);
+        }
+         // Sentence long
+         if (isset($base_content['sentence']['long'])) {
+            $content = str_replace(
+                'Use this paragraph section to get your website visitors to know you. Write about you or your organization, the products or services you offer, or why you exist. Keep a consistent communication style. Consider using this if you need to provide more context on why you do what you do. Be engaging. Focus on delivering value to your visitors.',
+                $base_content['sentence']['long'],
+                $content
+            );
+        }
+         // Sentence medium
+         if (isset($base_content['sentence']['medium'])) {
+            $content = str_replace(
+                'Consider using this if you need to provide more context on why you do what you do. Be engaging. Focus on delivering value to your visitors.',
+                $base_content['sentence']['medium'],
+                $content
+            );
+        }
         // Sentence short
         if (isset($base_content['sentence']['short'])) {
             $content = str_replace(
@@ -1716,7 +1805,7 @@ class Content_Replacer {
      * @param string $context The context.
      * @return string
      */
-    private static function process_counter_or_stats_content($content, $base_content, $context_ai, $context, $is_html) {
+    private static function process_counter_or_stats_content($content, $base_content, $context_ai, $base_testimonial_content, $context, $is_html) {
         $counter_content = self::find_content_by_id($context_ai, $context . '-counter-stats');
         // Headline.
         if ( isset($counter_content['heading']['medium']) ) {
@@ -1768,18 +1857,18 @@ class Content_Replacer {
         if ( isset($counter_content['metrics']) ) {
             foreach ($counter_content['metrics'] as $index => $metric) {
                 // Title.
-                if ( isset($metric['title-short']) ) {
+                if ( isset($counter_content['metrics'][$index]['title-short']) ) {
                     if ( ! $is_html ) {
                         $replacement = '"title":"Stat title"';
                         $pos = strpos($content, $replacement);
                         if (false !== $pos) {
-                            $content = substr_replace($content, '"title":"'. $metric['title-short'] .'"', $pos, strlen($replacement));
+                            $content = substr_replace($content, '"title":"'. $counter_content['metrics'][$index]['title-short'] .'"', $pos, strlen($replacement));
                         }
                     }
                     $replacement = 'Stat title';
                     $pos = strpos($content, $replacement);
                     if (false !== $pos) {
-                        $content = substr_replace($content, $metric['title-short'], $pos, strlen($replacement));
+                        $content = substr_replace($content, $counter_content['metrics'][$index]['title-short'], $pos, strlen($replacement));
                     }
                 }
                 // Price.
@@ -1791,13 +1880,12 @@ class Content_Replacer {
                     } else if ( 1 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "98%", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( "98", absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 2 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "100,110", $counter_content['metrics'][$index]['value-short'], $content );
-                        }
-                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
-                            $content = str_replace( "18,110", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( "100110", absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 3 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
@@ -1806,6 +1894,11 @@ class Content_Replacer {
                     } else if ( 4 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "20yr", $counter_content['metrics'][$index]['value-short'], $content );
+                        }
+                    } else if ( 5 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "18,110", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( "18110", absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     }
                 }
@@ -1842,6 +1935,45 @@ class Content_Replacer {
                     $pos = strpos($content, $replacement);
                     if (false !== $pos) {
                         $content = substr_replace($content, $item['list-item-long'], $pos, strlen($replacement));
+                    }
+                }
+            }
+        }
+
+        // Process testimonials
+        if (isset($base_testimonial_content['testimonials'])) {
+            foreach ($base_testimonial_content['testimonials'] as $testimonial) {
+                if (isset($testimonial['customer'])) {
+                    $replacement = 'Customer Name';
+                    $pos = strpos($content, $replacement);
+                    if (false !== $pos) {
+                        $content = substr_replace($content, $testimonial['customer'], $pos, strlen($replacement));
+                    }
+                }
+                if (isset($testimonial['customer-name'])) {
+                    $replacement = 'Customer Name';
+                    $pos = strpos($content, $replacement);
+                    if (false !== $pos) {
+                        $content = substr_replace($content, $testimonial['customer-name'], $pos, strlen($replacement));
+                    }
+                }
+                if (isset($testimonial['customer-occupation'])) {
+                    $replacement = 'Customer Title';
+                    $pos = strpos($content, $replacement);
+                    if (false !== $pos) {
+                        $content = substr_replace($content, $testimonial['customer-occupation'], $pos, strlen($replacement));
+                    }
+                }
+                if (isset($testimonial['testimonial'])) {
+                    $replacements = [
+                        'Testimonials are a social proof, a powerful way to inspire trust.',
+                        'Testimonials, as authentic endorsements from satisfied customers, serve as potent social proof, significantly inspiring trust in potential consumers.'
+                    ];
+                    foreach ($replacements as $replacement) {
+                        $pos = strpos($content, $replacement);
+                        if (false !== $pos) {
+                            $content = substr_replace($content, $testimonial['testimonial'], $pos, strlen($replacement));
+                        }
                     }
                 }
             }

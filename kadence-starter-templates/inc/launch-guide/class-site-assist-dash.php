@@ -242,9 +242,31 @@ class Site_Assist_Dash {
 				'tours'        => $this->get_tours(),
 				'settings'     => get_option( 'kadence_site_assist_tasks' ),
 				'outsideKB'    => $this->get_outside_kb(),
+				'stellarKB'    => $this->get_stellar_kb(),
 			]
 		);
 	}
+	/**
+	 * Get Stellar KB
+	 */
+	public function get_stellar_kb() {
+		if ( ! class_exists( '\StellarWP\StellarSites\Plugin' ) ) {
+			return [];
+		}
+		return [
+			[
+				'title' => __( 'StellarSites Support Hub', 'kadence-starter-templates' ),
+				'url'   => 'https://my.stellarwp.com/my-account/support/',
+			],
+			[
+				'title' => __( 'StellarSites Documentation', 'kadence-starter-templates' ),
+				'url'   => 'https://stellarwp.com/docs/stellarsites/',
+			],
+		];
+	}
+	/**
+	 * Get Outside KB
+	 */
 	public function get_outside_kb() {
 		$knowledge_bases = [
 			[
