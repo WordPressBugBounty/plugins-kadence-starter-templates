@@ -465,7 +465,6 @@ class Starter_Import_Processes {
 		$error_messages = [];
 		if ( ! empty( $available_prompts ) && is_array( $available_prompts ) ) {
 			foreach ( $available_prompts as $context => $prompt ) {
-				error_log( 'get_all_local_ai_items context: ' . $context );
 				// Check local cache.
 				try {
 					$return_data[ $context ] = json_decode( $this->ai_cache->get( $available_prompts[ $context ] ), true );
@@ -3084,16 +3083,17 @@ class Starter_Import_Processes {
 		$i = 0;
 		$prepared_events = array();
 		foreach ( $events as $event_data ) {
-			$event_json = json_encode( $event_data, true );
-			$event_json = Image_Replacer::replace_images(
-				$event_json,
-				$image_library,
-				[],
-				'',
-				$i,
-				[],
-			);
-			$prepared_events[] = json_decode( $event_json, true );
+			if ( ! empty( $event_data['image'] ) ) {
+				$event_data['image'] = Image_Replacer::replace_images(
+					$event_data['image'],
+					$image_library,
+					[],
+					'',
+					$i,
+					[],
+				);
+			}
+			$prepared_events[] = $event_data;
 			$i++;
 		}
 		return $prepared_events;
@@ -3485,8 +3485,16 @@ class Starter_Import_Processes {
 	 * @return int The cpt id.
 	 */
 	public function install_single_cpt( $cpt_data, $id_map = [], $style = 'light' ) {
+		// Check if the post already exists.
+		$post_exists = get_posts( [
+			'post_type' => $cpt_data['post_type'],
+			'title' => $cpt_data['post_title'],
+		] );
+		if ( $post_exists ) {
+			return $post_exists[0]->ID;
+		}
 		$temp_content = $cpt_data['post_content'];
-		unset($cpt_data['ID']);
+		//unset($cpt_data['ID']);
 		$title = ! empty( $style ) && 'light' !== $style ? $cpt_data['post_title'] . ' ' . $style : $cpt_data['post_title'];
 		$new_post_id  = wp_insert_post([
 			'post_type' => $cpt_data['post_type'],

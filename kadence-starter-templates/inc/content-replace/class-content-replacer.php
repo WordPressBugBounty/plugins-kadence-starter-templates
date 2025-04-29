@@ -91,7 +91,7 @@ class Content_Replacer {
                 $content = self::process_video_content($content, $base_content, $video_content, $list_content, $is_html);
                 break;
             case 'cards':
-                $content = self::process_cards_content($content, $base_content, $columns_content, $is_html);
+                $content = self::process_cards_content($content, $base_content, $columns_content, $context_ai, $context, $is_html);
                 break;
             case 'testimonials':
                 $content = self::process_testimonials_content($content, $base_content, $context_ai, $context, $is_html);
@@ -246,7 +246,7 @@ class Content_Replacer {
         // Paragraph Medium
         if (isset($base_content['sentence']['medium'])) {
             $content = str_replace(
-                'Consider using this if you need to provide more context on why you do what you do. Be engaging. Focus on delivering value to your visitors. ',
+                'Consider using this if you need to provide more context on why you do what you do. Be engaging. Focus on delivering value to your visitors.',
                 $base_content['sentence']['medium'],
                 $content
             );
@@ -255,7 +255,7 @@ class Content_Replacer {
         // Paragraph Short
         if (isset($base_content['sentence']['short'])) {
             $content = str_replace(
-                'Consider using this if you need to provide more context on why you do what you do. ',
+                'Consider using this if you need to provide more context on why you do what you do.',
                 $base_content['sentence']['short'],
                 $content
             );
@@ -959,7 +959,7 @@ class Content_Replacer {
      * @param boolean $is_html Whether content is HTML.
      * @return string
      */
-    private static function process_cards_content($content, $base_content, $columns_content, $is_html) {
+    private static function process_cards_content($content, $base_content, $columns_content, $context_ai, $context, $is_html) {
         // Headline medium
         if (isset($base_content['heading']['medium'])) {
             $content = str_replace(
@@ -1034,7 +1034,68 @@ class Content_Replacer {
                 }
             }
         }
-
+        $counter_content = self::find_content_by_id($context_ai, $context . '-counter-stats');
+         // Metrics
+        if ( isset($counter_content['metrics']) ) {
+            foreach ($counter_content['metrics'] as $index => $metric) {
+                // Title.
+                if ( isset($counter_content['metrics'][$index]['title-short']) ) {
+                    if ( ! $is_html ) {
+                        $replacement = '"title":"Stat title"';
+                        $pos = strpos($content, $replacement);
+                        if (false !== $pos) {
+                            $content = substr_replace($content, '"title":"'. $counter_content['metrics'][$index]['title-short'] .'"', $pos, strlen($replacement));
+                        }
+                    }
+                    $replacement = 'Stat title';
+                    $pos = strpos($content, $replacement);
+                    if (false !== $pos) {
+                        $content = substr_replace($content, $counter_content['metrics'][$index]['title-short'], $pos, strlen($replacement));
+                    }
+                }
+                // Price.
+                if ( isset($counter_content['metrics'][$index]['value-short']) ) {
+                    if ( 0 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "50%", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":50', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="50', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                        }
+                    } else if ( 1 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "98%", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( "98", absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( '"end":98', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="98', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                        }
+                    } else if ( 2 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "100,110", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":100110', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="100110', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                        }
+                    } else if ( 3 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "8/mo", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":8', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="8', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                        }
+                    } else if ( 4 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "20yr", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":20', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="20', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                        }
+                    } else if ( 5 === $index ) {
+                        if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
+                            $content = str_replace( "18,110", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":18110', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="18110', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                        }
+                    }
+                }
+            }
+        }
         return $content;
     }
 
@@ -1707,7 +1768,6 @@ class Content_Replacer {
         // Headline short
         if (isset($base_content['heading']['short'])) {
             $content = str_replace('Add A Title For Your Form', $base_content['heading']['short'], $content);
-            $content = str_replace('Contact Us', $base_content['heading']['short'], $content);
         }
 
         // Sentence short
@@ -1876,29 +1936,39 @@ class Content_Replacer {
                     if ( 0 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "50%", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":50', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="50', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 1 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "98%", $counter_content['metrics'][$index]['value-short'], $content );
                             $content = str_replace( "98", absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( '"end":98', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="98', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 2 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "100,110", $counter_content['metrics'][$index]['value-short'], $content );
-                            $content = str_replace( "100110", absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( '"end":100110', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="100110', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 3 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "8/mo", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":8', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="8', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 4 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "20yr", $counter_content['metrics'][$index]['value-short'], $content );
+                            $content = str_replace( '"end":20', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="20', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     } else if ( 5 === $index ) {
                         if ( strlen($counter_content['metrics'][$index]['value-short']) < 8 ) {
                             $content = str_replace( "18,110", $counter_content['metrics'][$index]['value-short'], $content );
-                            $content = str_replace( "18110", absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( '"end":18110', '"end":'. absint($counter_content['metrics'][$index]['value-short']), $content );
+                            $content = str_replace( 'data-end="18110', 'data-end="'. absint($counter_content['metrics'][$index]['value-short']), $content );
                         }
                     }
                 }
