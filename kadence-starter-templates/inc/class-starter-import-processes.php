@@ -3486,16 +3486,15 @@ class Starter_Import_Processes {
 	 */
 	public function install_single_cpt( $cpt_data, $id_map = [], $style = 'light' ) {
 		// Check if the post already exists.
+		$title       = ! empty( $style ) && 'light' !== $style ? $cpt_data['post_title'] . ' ' . ucfirst( $style ) : $cpt_data['post_title'];
 		$post_exists = get_posts( [
 			'post_type' => $cpt_data['post_type'],
-			'title' => $cpt_data['post_title'],
+			'title' => $title,
 		] );
 		if ( $post_exists ) {
 			return $post_exists[0]->ID;
 		}
 		$temp_content = $cpt_data['post_content'];
-		//unset($cpt_data['ID']);
-		$title = ! empty( $style ) && 'light' !== $style ? $cpt_data['post_title'] . ' ' . $style : $cpt_data['post_title'];
 		$new_post_id  = wp_insert_post([
 			'post_type' => $cpt_data['post_type'],
 			'post_title' => $title,
@@ -3507,12 +3506,18 @@ class Starter_Import_Processes {
 			if ( ! empty( $cpt_data['meta'])) {
 				foreach ($cpt_data['meta'] as $meta_key => $meta_values) {
 					foreach ($meta_values as $meta_value) {
+						if ( ! empty( $style ) && 'light' !== $style ) {
+							$meta_value = $this->cpt_switch_meta_color( $meta_value, $meta_key, $style );
+						}
 						add_post_meta($new_post_id, $meta_key, $meta_value);
 					}
 				}
 			}
 			if ( ! empty( $id_map ) ) {
 				$temp_content = $this->update_block_ids($temp_content, $id_map);
+			}
+			if ( ! empty( $style ) && 'light' !== $style ) {
+				$temp_content = $this->cpt_switch_color( $temp_content, $style );
 			}
 			wp_update_post(array(
 				'ID' => $new_post_id,
@@ -3522,6 +3527,222 @@ class Starter_Import_Processes {
 			return $new_post_id;
 		}
 		return false;
+	}
+	/**
+	 * Retrieves a collection of objects.
+	 *
+	 * @param string $content The content to search.
+	 * @param string $style The style to search for.
+	 * @return string The content with the style replaced.
+	 */
+	public function cpt_switch_meta_color( $meta_value, $meta_key, $style ) {
+		$temp_meta_value = wp_json_encode( $meta_value );
+		if ( $style === 'highlight' ) {
+			$temp_meta_value = str_replace( 'palette1', 'placeholder-kb-pal9', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette2', 'placeholder-kb-pal8', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette3', 'placeholder-kb-pal9', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette4', 'placeholder-kb-pal9', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette5', 'placeholder-kb-pal8', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette6', 'placeholder-kb-pal7', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette7', 'placeholder-kb-pal2', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette8', 'placeholder-kb-pal2', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette9', 'placeholder-kb-pal1', $temp_meta_value );
+		} else {
+			$temp_meta_value = str_replace( 'palette3', 'placeholder-kb-pal9', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette4', 'placeholder-kb-pal8', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette5', 'placeholder-kb-pal7', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette6', 'placeholder-kb-pal7', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette7', 'placeholder-kb-pal3', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette8', 'placeholder-kb-pal3', $temp_meta_value );
+			$temp_meta_value = str_replace( 'palette9', 'placeholder-kb-pal4', $temp_meta_value );
+		}
+		$temp_meta_value = str_replace( 'placeholder-kb-pal1', 'palette1', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal2', 'palette2', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal3', 'palette3', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal4', 'palette4', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal5', 'palette5', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal6', 'palette6', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal7', 'palette7', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal8', 'palette8', $temp_meta_value );
+		$temp_meta_value = str_replace( 'placeholder-kb-pal9', 'palette9', $temp_meta_value );
+
+		return json_decode( $temp_meta_value, true );
+	}
+	/**
+	 * Retrieves a collection of objects.
+	 */
+	public function cpt_switch_color( $content, $style ) {
+		$content = str_replace( 'Logo-ploaceholder.png', 'Logo-ploaceholder-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-1.png', 'Logo-ploaceholder-1-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-2.png', 'Logo-ploaceholder-2-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-3.png', 'Logo-ploaceholder-3-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-4.png', 'Logo-ploaceholder-4-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-5.png', 'Logo-ploaceholder-5-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-6.png', 'Logo-ploaceholder-6-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-7.png', 'Logo-ploaceholder-7-white.png', $content );
+		$content = str_replace( 'Logo-ploaceholder-8.png', 'Logo-ploaceholder-8-white.png', $content );
+
+		$content = str_replace( 'logo-placeholder.png', 'logo-placeholder-white.png', $content );
+		$content = str_replace( 'logo-placeholder-1.png', 'logo-placeholder-1-white.png', $content );
+		$content = str_replace( 'logo-placeholder-2.png', 'logo-placeholder-2-white.png', $content );
+		$content = str_replace( 'logo-placeholder-3.png', 'logo-placeholder-3-white.png', $content );
+		$content = str_replace( 'logo-placeholder-4.png', 'logo-placeholder-4-white.png', $content );
+		$content = str_replace( 'logo-placeholder-5.png', 'logo-placeholder-5-white.png', $content );
+		$content = str_replace( 'logo-placeholder-6.png', 'logo-placeholder-6-white.png', $content );
+		$content = str_replace( 'logo-placeholder-7.png', 'logo-placeholder-7-white.png', $content );
+		$content = str_replace( 'logo-placeholder-8.png', 'logo-placeholder-8-white.png', $content );
+		$content = str_replace( 'logo-placeholder-9.png', 'logo-placeholder-9-white.png', $content );
+		$content = str_replace( 'logo-placeholder-10.png', 'logo-placeholder-10-white.png', $content );
+		
+		if ( $style === 'highlight' ) {
+			$form_content = $this->get_string_inbetween( $content, '"submit":[{', ']}', 'wp:kadence/form' );
+			if ( $form_content ) {
+				$form_content_org = $form_content;
+				$form_content     = str_replace( '"color":""', '"color":"placeholder-kb-pal9"', $form_content );
+				$form_content     = str_replace( '"background":""', '"background":"placeholder-kb-pal3"', $form_content );
+				$form_content     = str_replace( '"colorHover":""', '"colorHover":"placeholder-kb-pal9"', $form_content );
+				$form_content     = str_replace( '"backgroundHover":""', '"backgroundHover":"placeholder-kb-pal4"', $form_content );
+				$content          = str_replace( $form_content_org, $form_content, $content );
+			}
+			$content = str_replace( '"inheritStyles":"inherit"', '"color":"placeholder-kb-pal9","background":"placeholder-kb-pal3","colorHover":"placeholder-kb-pal9","backgroundHover":"placeholder-kb-pal4","inheritStyles":"inherit"', $content );
+
+			$content = str_replace( 'has-theme-palette-1', 'placeholder-kb-class9', $content );
+			$content = str_replace( 'has-theme-palette-2', 'placeholder-kb-class8', $content );
+			$content = str_replace( 'has-theme-palette-3', 'placeholder-kb-class9', $content );
+			$content = str_replace( 'has-theme-palette-4', 'placeholder-kb-class9', $content );
+			$content = str_replace( 'has-theme-palette-5', 'placeholder-kb-class8', $content );
+			$content = str_replace( 'has-theme-palette-6', 'placeholder-kb-class7', $content );
+			$content = str_replace( 'has-theme-palette-7', 'placeholder-kb-class2', $content );
+			$content = str_replace( 'has-theme-palette-8', 'placeholder-kb-class2', $content );
+			$content = str_replace( 'has-theme-palette-9', 'placeholder-kb-class1', $content );
+
+			$content = str_replace( 'theme-palette1', 'placeholder-class-pal9', $content );
+			$content = str_replace( 'theme-palette2', 'placeholder-class-pal8', $content );
+			$content = str_replace( 'theme-palette3', 'placeholder-class-pal9', $content );
+			$content = str_replace( 'theme-palette4', 'placeholder-class-pal9', $content );
+			$content = str_replace( 'theme-palette5', 'placeholder-class-pal8', $content );
+			$content = str_replace( 'theme-palette6', 'placeholder-class-pal7', $content );
+			$content = str_replace( 'theme-palette7', 'placeholder-class-pal2', $content );
+			$content = str_replace( 'theme-palette8', 'placeholder-class-pal2', $content );
+			$content = str_replace( 'theme-palette9', 'placeholder-class-pal1', $content );
+
+			$content = str_replace( 'palette1', 'placeholder-kb-pal9', $content );
+			$content = str_replace( 'palette2', 'placeholder-kb-pal8', $content );
+			$content = str_replace( 'palette3', 'placeholder-kb-pal9', $content );
+			$content = str_replace( 'palette4', 'placeholder-kb-pal9', $content );
+			$content = str_replace( 'palette5', 'placeholder-kb-pal8', $content );
+			$content = str_replace( 'palette6', 'placeholder-kb-pal7', $content );
+			$content = str_replace( 'palette7', 'placeholder-kb-pal2', $content );
+			$content = str_replace( 'palette8', 'placeholder-kb-pal2', $content );
+			$content = str_replace( 'palette9', 'placeholder-kb-pal1', $content );
+
+		} else {
+			$white_text_content = $this->get_string_inbetween_when( $content, '<!-- wp:kadence/column', 'kt-inside-inner-col', 'kb-pattern-light-color', 0 );
+			if ( $white_text_content ) {
+				$white_text_content_org = $white_text_content;
+				$white_text_content     = str_replace( '"textColor":"palette9"', '"textColor":"placeholder-kb-pal9"', $white_text_content );
+				$white_text_content     = str_replace( '"linkColor":"palette9"', '"linkColor":"placeholder-kb-pal9"', $white_text_content );
+				$white_text_content     = str_replace( '"linkHoverColor":"palette9"', '"linkHoverColor":"placeholder-kb-pal9"', $white_text_content );
+				$content                = str_replace( $white_text_content_org, $white_text_content, $content );
+			}
+			$content = str_replace( 'has-theme-palette-3', 'placeholder-kb-class9', $content );
+			$content = str_replace( 'has-theme-palette-4', 'placeholder-kb-class8', $content );
+			$content = str_replace( 'has-theme-palette-5', 'placeholder-kb-class7', $content );
+			$content = str_replace( 'has-theme-palette-6', 'placeholder-kb-class7', $content );
+			$content = str_replace( 'has-theme-palette-7', 'placeholder-kb-class3', $content );
+			$content = str_replace( 'has-theme-palette-8', 'placeholder-kb-class3', $content );
+			$content = str_replace( 'has-theme-palette-9', 'placeholder-kb-class4', $content );
+
+			$content = str_replace( 'theme-palette3', 'placeholder-class-pal9', $content );
+			$content = str_replace( 'theme-palette4', 'placeholder-class-pal8', $content );
+			$content = str_replace( 'theme-palette5', 'placeholder-class-pal7', $content );
+			$content = str_replace( 'theme-palette6', 'placeholder-class-pal7', $content );
+			$content = str_replace( 'theme-palette7', 'placeholder-class-pal3', $content );
+			$content = str_replace( 'theme-palette8', 'placeholder-class-pal3', $content );
+			$content = str_replace( 'theme-palette9', 'placeholder-class-pal4', $content );
+
+			$content = str_replace( 'palette3', 'placeholder-kb-pal9', $content );
+			$content = str_replace( 'palette4', 'placeholder-kb-pal8', $content );
+			$content = str_replace( 'palette5', 'placeholder-kb-pal7', $content );
+			$content = str_replace( 'palette6', 'placeholder-kb-pal7', $content );
+			$content = str_replace( 'palette7', 'placeholder-kb-pal3', $content );
+			$content = str_replace( 'palette8', 'placeholder-kb-pal3', $content );
+			$content = str_replace( 'palette9', 'placeholder-kb-pal4', $content );
+		}
+		$content = str_replace( 'placeholder-kb-class1', 'has-theme-palette-1', $content );
+		$content = str_replace( 'placeholder-kb-class2', 'has-theme-palette-2', $content );
+		$content = str_replace( 'placeholder-kb-class3', 'has-theme-palette-3', $content );
+		$content = str_replace( 'placeholder-kb-class4', 'has-theme-palette-4', $content );
+		$content = str_replace( 'placeholder-kb-class5', 'has-theme-palette-5', $content );
+		$content = str_replace( 'placeholder-kb-class6', 'has-theme-palette-6', $content );
+		$content = str_replace( 'placeholder-kb-class7', 'has-theme-palette-7', $content );
+		$content = str_replace( 'placeholder-kb-class8', 'has-theme-palette-8', $content );
+		$content = str_replace( 'placeholder-kb-class9', 'has-theme-palette-9', $content );
+
+		$content = str_replace( 'placeholder-class-pal1', 'theme-palette1', $content );
+		$content = str_replace( 'placeholder-class-pal2', 'theme-palette2', $content );
+		$content = str_replace( 'placeholder-class-pal3', 'theme-palette3', $content );
+		$content = str_replace( 'placeholder-class-pal4', 'theme-palette4', $content );
+		$content = str_replace( 'placeholder-class-pal5', 'theme-palette5', $content );
+		$content = str_replace( 'placeholder-class-pal6', 'theme-palette6', $content );
+		$content = str_replace( 'placeholder-class-pal7', 'theme-palette7', $content );
+		$content = str_replace( 'placeholder-class-pal8', 'theme-palette8', $content );
+		$content = str_replace( 'placeholder-class-pal9', 'theme-palette9', $content );
+
+		$content = str_replace( 'placeholder-kb-pal1', 'palette1', $content );
+		$content = str_replace( 'placeholder-kb-pal2', 'palette2', $content );
+		$content = str_replace( 'placeholder-kb-pal3', 'palette3', $content );
+		$content = str_replace( 'placeholder-kb-pal4', 'palette4', $content );
+		$content = str_replace( 'placeholder-kb-pal5', 'palette5', $content );
+		$content = str_replace( 'placeholder-kb-pal6', 'palette6', $content );
+		$content = str_replace( 'placeholder-kb-pal7', 'palette7', $content );
+		$content = str_replace( 'placeholder-kb-pal8', 'palette8', $content );
+		$content = str_replace( 'placeholder-kb-pal9', 'palette9', $content );
+		return $content;
+	}
+	/**
+	 * Retrieves a collection of objects.
+	 *
+	 * @param string $string The string to search.
+	 * @param string $start The start of the string.
+	 * @param string $end The end of the string.
+	 * @param string $verify The string to verify.
+	 * @return string The string in between the start and end.
+	 */
+	public function get_string_inbetween( $string, $start, $end, $verify ) {
+		if ( strpos( $string, $verify ) == 0 ) {
+			return '';
+		}
+		$ini = strpos( $string, $start );
+		if ( $ini == 0 ) {
+			return '';
+		}
+		$ini += strlen( $start );
+		$len  = strpos( $string, $end, $ini ) - $ini;
+		return substr( $string, $ini, $len );
+	}
+	/**
+	 * Retrieves a collection of objects.
+	 *
+	 * @param string $string The string to search.
+	 * @param string $start The start of the string.
+	 * @param string $end The end of the string.
+	 * @param string $verify The string to verify.
+	 * @param int    $from The position to start searching from.
+	 * @return string The string in between the start and end.
+	 */
+	public function get_string_inbetween_when( $string, $start, $end, $verify, $from ) {
+		$ini = strpos( $string, $start, $from );
+		if ( $ini == 0 ) {
+			return '';
+		}
+		$ini       += strlen( $start );
+		$len        = strpos( $string, $end, $ini ) - $ini;
+		$sub_string = substr( $string, $ini, $len );
+		if ( strpos( $sub_string, $verify ) == 0 ) {
+			return $this->get_string_inbetween_when( $string, $start, $end, $verify, $ini );
+		}
+		return $sub_string;
 	}
 	/**
 	 * Process Form Replace.

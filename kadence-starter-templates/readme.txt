@@ -3,7 +3,7 @@ Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
 Tested up to: 6.8
-Stable tag: 2.2.8
+Stable tag: 2.2.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -124,6 +124,12 @@ assist you with verification, CVE assignment, and notify the
 developers of this plugin.
 
 == Changelog ==
+
+= 2.2.9 =
+Release Date: 5th June 2025
+* Add: Display name step.
+* Add: LearnDash Steps to site assist if active.
+* Improve: Preview size on smaller laptops.
 
 = 2.2.8 =
 Release Date: 29th April 2025
