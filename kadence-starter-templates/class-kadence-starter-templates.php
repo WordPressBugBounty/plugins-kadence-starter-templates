@@ -318,6 +318,7 @@ class Starter_Templates {
 	 * @param array $selected_import the selected import.
 	 */
 	public function kadence_kadence_theme_after_import( $selected_import, $selected_palette, $selected_font ) {
+
 		if ( class_exists( 'woocommerce' ) && isset( $selected_import['ecommerce'] ) && $selected_import['ecommerce'] ) {
 			$this->import_demo_woocommerce();
 		}
@@ -663,8 +664,6 @@ class Starter_Templates {
 		delete_option( '_wc_needs_pages' );
 		delete_transient( '_wc_activation_redirect' );
 
-		// Flush rules after install.
-		flush_rewrite_rules();
 	}
 	/**
 	 * Throw error on object clone.
@@ -2825,6 +2824,10 @@ class Starter_Templates {
 	private function final_response( $extra = '' ) {
 		// Delete importer data transient for current import.
 		delete_transient( 'kadence_importer_data' );
+
+		update_option( 'permalink_structure', '/%postname%/' );
+
+		flush_rewrite_rules();
 
 		// Display final messages (success or error messages).
 		if ( empty( $this->frontend_error_messages ) && ! empty( $extra ) ) {

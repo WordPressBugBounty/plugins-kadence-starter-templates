@@ -4424,16 +4424,18 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * Get the current license key for the plugin.
 	 */
 	public function get_pro_license_data() {
+		$data = [];
 		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
 			$data = kadence_blocks_get_current_license_data();
-			if ( empty( $data['key'] ) ) {
-				$data = [ 
-					'key'     => get_license_key( 'kadence-starter-templates' ),
-					'product' => 'kadence-starter-templates',
-					'email'   => '',
-				];
-			}
-		} else {
+		}
+		if ( empty( $data['key'] ) && function_exists( 'KadenceWP\KadencePro\StellarWP\Uplink\get_license_key' ) ) {
+			$data = [ 
+				'key'     => \KadenceWP\KadencePro\StellarWP\Uplink\get_license_key( 'kadence-theme-pro' ),
+				'product' => 'kadence-theme-pro',
+				'email'   => '',
+			];
+		}
+		if ( empty( $data['key'] ) ) {
 			$data = [ 
 				'key'     => get_license_key( 'kadence-starter-templates' ),
 				'product' => 'kadence-starter-templates',

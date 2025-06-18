@@ -1716,7 +1716,7 @@ class Starter_Import_Processes {
 					} else {
 						if ( defined( 'LEARNDASH_COURSE_GRID_VERSION' ) ) {
 							$page_content = '<!-- wp:learndash/ld-course-grid {"per_page":"12","thumbnail_size":"medium","ribbon":false,"title_clickable":true,"post_meta":false,"button":true,"pagination":"false","grid_height_equal":true,"progress_bar":true,"filter":false,"card":"grid-3","items_per_row":"3","font_family_title":"inter","font_family_description":"inter","font_size_title":"24px","font_size_description":"14px","font_color_description":"#4a4a68","id":"ld-cg-lxdnpir6oz","filter_search":false,"filter_price":false,"className":"home-course-grid"} /-->';
-							// Create Shop page using wp_insert_post
+							// Create Courses using wp_insert_post
 							$page_id = wp_insert_post(
 								array(
 								'post_title'   => 'Courses',
