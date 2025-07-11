@@ -46,7 +46,7 @@ final class EntryParser
      *
      * @param string $entry
      *
-     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Entry,string>
+     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Entry, string>
      */
     public static function parse(string $entry)
     {
@@ -54,7 +54,7 @@ final class EntryParser
             [$name, $value] = $parts;
 
             return self::parseName($name)->flatMap(static function (string $name) use ($value) {
-                /** @var Result<Value|null,string> */
+                /** @var Result<Value|null, string> */
                 $parsedValue = $value === null ? Success::create(null) : self::parseValue($value);
 
                 return $parsedValue->map(static function (?Value $value) use ($name) {
@@ -69,21 +69,21 @@ final class EntryParser
      *
      * @param string $line
      *
-     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,string|null},string>
+     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, string|null},string>
      */
     private static function splitStringIntoParts(string $line)
     {
-        /** @var array{string,string|null} */
+        /** @var array{string, string|null} */
         $result = Str::pos($line, '=')->map(static function () use ($line) {
             return \array_map('trim', \explode('=', $line, 2));
         })->getOrElse([$line, null]);
 
         if ($result[0] === '') {
-            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,string|null},string> */
+            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, string|null},string> */
             return Error::create(self::getErrorMessage('an unexpected equals', $line));
         }
 
-        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,string|null},string> */
+        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, string|null},string> */
         return Success::create($result);
     }
 
@@ -95,7 +95,7 @@ final class EntryParser
      *
      * @param string $name
      *
-     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<string,string>
+     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<string, string>
      */
     private static function parseName(string $name)
     {
@@ -108,11 +108,11 @@ final class EntryParser
         }
 
         if (!self::isValidName($name)) {
-            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<string,string> */
+            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<string, string> */
             return Error::create(self::getErrorMessage('an invalid name', $name));
         }
 
-        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<string,string> */
+        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<string, string> */
         return Success::create($name);
     }
 
@@ -157,12 +157,12 @@ final class EntryParser
      *
      * @param string $value
      *
-     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value,string>
+     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value, string>
      */
     private static function parseValue(string $value)
     {
         if (\trim($value) === '') {
-            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value,string> */
+            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value, string> */
             return Success::create(Value::blank());
         }
 
@@ -175,11 +175,11 @@ final class EntryParser
         }, Success::create([Value::blank(), self::INITIAL_STATE]))->flatMap(static function (array $result) {
             /** @psalm-suppress DocblockTypeContradiction */
             if (in_array($result[1], self::REJECT_STATES, true)) {
-                /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value,string> */
+                /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value, string> */
                 return Error::create('a missing closing quote');
             }
 
-            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value,string> */
+            /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<\Dotenv\Parser\Value, string> */
             return Success::create($result[0]);
         })->mapError(static function (string $err) use ($value) {
             return self::getErrorMessage($err, $value);
@@ -192,94 +192,94 @@ final class EntryParser
      * @param int    $state
      * @param string $token
      *
-     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string>
+     * @return \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string>
      */
     private static function processToken(int $state, string $token)
     {
         switch ($state) {
             case self::INITIAL_STATE:
                 if ($token === '\'') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::SINGLE_QUOTED_STATE]);
                 } elseif ($token === '"') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::DOUBLE_QUOTED_STATE]);
                 } elseif ($token === '#') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::COMMENT_STATE]);
                 } elseif ($token === '$') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, true, self::UNQUOTED_STATE]);
                 } else {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, false, self::UNQUOTED_STATE]);
                 }
             case self::UNQUOTED_STATE:
                 if ($token === '#') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::COMMENT_STATE]);
                 } elseif (\ctype_space($token)) {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::WHITESPACE_STATE]);
                 } elseif ($token === '$') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, true, self::UNQUOTED_STATE]);
                 } else {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, false, self::UNQUOTED_STATE]);
                 }
             case self::SINGLE_QUOTED_STATE:
                 if ($token === '\'') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::WHITESPACE_STATE]);
                 } else {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, false, self::SINGLE_QUOTED_STATE]);
                 }
             case self::DOUBLE_QUOTED_STATE:
                 if ($token === '"') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::WHITESPACE_STATE]);
                 } elseif ($token === '\\') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::ESCAPE_SEQUENCE_STATE]);
                 } elseif ($token === '$') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, true, self::DOUBLE_QUOTED_STATE]);
                 } else {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, false, self::DOUBLE_QUOTED_STATE]);
                 }
             case self::ESCAPE_SEQUENCE_STATE:
                 if ($token === '"' || $token === '\\') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, false, self::DOUBLE_QUOTED_STATE]);
                 } elseif ($token === '$') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create([$token, false, self::DOUBLE_QUOTED_STATE]);
                 } else {
                     $first = Str::substr($token, 0, 1);
                     if (\in_array($first, ['f', 'n', 'r', 't', 'v'], true)) {
-                        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                         return Success::create([\stripcslashes('\\'.$first).Str::substr($token, 1), false, self::DOUBLE_QUOTED_STATE]);
                     } else {
-                        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                        /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                         return Error::create('an unexpected escape sequence');
                     }
                 }
             case self::WHITESPACE_STATE:
                 if ($token === '#') {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::COMMENT_STATE]);
                 } elseif (!\ctype_space($token)) {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Error::create('unexpected whitespace');
                 } else {
-                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                    /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                     return Success::create(['', false, self::WHITESPACE_STATE]);
                 }
             case self::COMMENT_STATE:
-                /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string,bool,int},string> */
+                /** @var \KadenceWP\KadenceStarterTemplates\GrahamCampbell\ResultType\Result<array{string, bool, int}, string> */
                 return Success::create(['', false, self::COMMENT_STATE]);
             default:
                 throw new \Error('Parser entered invalid state.');

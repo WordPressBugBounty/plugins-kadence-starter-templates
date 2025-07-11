@@ -18,6 +18,8 @@ use KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\Config;
 final class Token_Authorizer_Cache_Decorator implements Contracts\Token_Authorizer {
 
 	public const TRANSIENT_PREFIX = 'stellarwp_auth_';
+	public const AUTHORIZED = 'authorized';
+	public const NOT_AUTHORIZED = 'not_authorized';
 
 	/**
 	 * @var Token_Authorizer
@@ -61,19 +63,23 @@ final class Token_Authorizer_Cache_Decorator implements Contracts\Token_Authoriz
 	 * @return bool
 	 */
 	public function is_authorized( string $license, string $slug, string $token, string $domain ): bool {
-		$transient     = $this->build_transient( [ $token ] );
-		$is_authorized = get_transient( $transient );
+		$transient = $this->build_transient( [ $token, $license, $slug, $domain ] );
+		$cached    = get_transient( $transient );
 
-		if ( $is_authorized === true ) {
+		if ( $cached === self::AUTHORIZED ) {
 			return true;
+		} elseif ( $cached === self::NOT_AUTHORIZED ) {
+			return false;
 		}
 
 		$is_authorized = $this->authorizer->is_authorized( $license, $slug, $token, $domain );
 
-		// Only cache successful responses.
-		if ( $is_authorized ) {
-			set_transient( $transient, true, $this->expiration );
+		if ( is_wp_error( $is_authorized ) ) {
+			// Don't cache errors.
+			return false;
 		}
+
+		set_transient( $transient, $is_authorized ? self::AUTHORIZED : self::NOT_AUTHORIZED, $this->expiration );
 
 		return $is_authorized;
 	}

@@ -36,8 +36,6 @@ class Validator
      * @param \KadenceWP\KadenceStarterTemplates\Dotenv\Repository\RepositoryInterface $repository
      * @param string[]                               $variables
      *
-     * @throws \KadenceWP\KadenceStarterTemplates\Dotenv\Exception\ValidationException
-     *
      * @return void
      */
     public function __construct(RepositoryInterface $repository, array $variables)

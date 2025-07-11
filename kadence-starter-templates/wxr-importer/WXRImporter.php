@@ -358,7 +358,6 @@ class WXRImporter extends \WP_Importer {
 			if ( $reader->nodeType !== XMLReader::ELEMENT ) {
 				continue;
 			}
-
 			switch ( $reader->name ) {
 				case 'wp:wxr_version':
 					// Upgrade to the correct version

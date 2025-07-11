@@ -5455,13 +5455,6 @@ class Starter_Import_Processes {
 				'path'  => 'sfwd-lms/sfwd_lms.php',
 				'src'   => 'thirdparty',
 			),
-			'learndash-course-grid' => array(
-				'title' => 'LearnDash Course Grid Addon',
-				'base'  => 'learndash-course-grid',
-				'slug'  => 'learndash_course_grid',
-				'path'  => 'learndash-course-grid/learndash_course_grid.php',
-				'src'   => 'thirdparty',
-			),
 			'lifterlms' => array(
 				'title' => 'LifterLMS',
 				'base'  => 'lifterlms',

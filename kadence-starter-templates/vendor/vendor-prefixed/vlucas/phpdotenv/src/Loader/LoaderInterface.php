@@ -19,7 +19,7 @@ interface LoaderInterface
      * @param \KadenceWP\KadenceStarterTemplates\Dotenv\Repository\RepositoryInterface $repository
      * @param \KadenceWP\KadenceStarterTemplates\Dotenv\Parser\Entry[]                 $entries
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public function load(RepositoryInterface $repository, array $entries);
 }

@@ -54,7 +54,6 @@ class CLI_Commands {
 		'fluentform',
 		'wpzoom-recipe-card',
 		'learndash',
-		'learndash-course-grid',
 		'lifterlms',
 		'tutor',
 		'give',
@@ -385,7 +384,6 @@ class CLI_Commands {
 			}
 			if ( in_array( 'courses', $goals ) ) {
 				$plugins[] = 'learndash';
-				$plugins[] = 'learndash-course-grid';
 			}
 			if ( in_array( 'donations', $goals ) ) {
 				$plugins[] = 'give';

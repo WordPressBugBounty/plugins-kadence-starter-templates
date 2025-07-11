@@ -2770,7 +2770,9 @@ class Library_REST_Controller extends WP_REST_Controller {
 		$site_name    = get_bloginfo( 'name' );
 		$license_data = $this->get_pro_license_data();
 		$product_slug = 'kadence-starter-templates';
-		if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
+		if ( ! empty( $license_data['product'] ) && 'kadence-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-pro';
+		} else if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
 			$product_slug = 'kadence-blocks-pro';
 		} else if ( ! empty( $license_data['product'] ) && ( 'kadence-creative-kit' === $license_data['product'] || 'kadence-blocks' === $license_data['product'] ) ) {
 			$product_slug = 'kadence-blocks';
@@ -4013,11 +4015,21 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 * @return string
 	 */
 	public function get_local_template_data_filename() {
-		$ktp_api = $this->get_current_license_key();
-		if ( empty( $ktp_api ) ) {
+		$license_data = $this->get_pro_license_data();
+		$product_slug = 'kadence-starter-templates';
+		if ( ! empty( $license_data['product'] ) && 'kadence-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-pro';
+		} else if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-blocks-pro';
+		} else if ( ! empty( $license_data['product'] ) && ( 'kadence-creative-kit' === $license_data['product'] || 'kadence-blocks' === $license_data['product'] ) ) {
+			$product_slug = 'kadence-blocks';
+		}
+		if ( ! empty( $license_data['api_key'] ) ) {
+			$ktp_api = $license_data['api_key'];
+		} else {
 			$ktp_api = 'free';
 		}
-		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api );
+		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api . $product_slug );
 	}
 	/**
 	 * Schedule a cleanup.
@@ -4203,13 +4215,6 @@ class Library_REST_Controller extends WP_REST_Controller {
 				'base'  => 'sfwd-lms',
 				'slug'  => 'sfwd_lms',
 				'path'  => 'sfwd-lms/sfwd_lms.php',
-				'src'   => 'thirdparty',
-			),
-			'learndash-course-grid' => array(
-				'title' => 'LearnDash Course Grid Addon',
-				'base'  => 'learndash-course-grid',
-				'slug'  => 'learndash_course_grid',
-				'path'  => 'learndash-course-grid/learndash_course_grid.php',
 				'src'   => 'thirdparty',
 			),
 			'lifterlms' => array(

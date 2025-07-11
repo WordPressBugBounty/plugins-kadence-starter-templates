@@ -6,6 +6,7 @@
  */ declare( strict_types=1 );
 
 namespace KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\API\V3\Auth\Contracts;
+use WP_Error;
 
 interface Token_Authorizer {
 
@@ -20,8 +21,8 @@ interface Token_Authorizer {
 	 * @param  string  $token    The stored token.
 	 * @param  string  $domain   The user's domain.
 	 *
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
-	public function is_authorized( string $license, string $slug, string $token, string $domain ): bool;
+	public function is_authorized( string $license, string $slug, string $token, string $domain );
 
 }

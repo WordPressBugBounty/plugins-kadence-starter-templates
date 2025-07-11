@@ -17,7 +17,7 @@ final class ArrayAdapter implements AdapterInterface
     /**
      * The variables and their values.
      *
-     * @var array<string,string>
+     * @var array<string, string>
      */
     private $variables;
 

@@ -242,7 +242,7 @@ function get_license_key( string $slug ): string {
 
 	$network = allows_multisite_license( $resource );
 
-	return $resource->get_license_key( $network ? 'network' : 'local' );
+	return $resource->get_license_key( $network ? 'network' : 'any' );
 }
 
 /**

@@ -303,21 +303,160 @@ class CustomizerImporter {
 	 */
 	private static function import_customizer_images( $mods ) {
 		foreach ( $mods as $key => $val ) {
-			if ( self::customizer_is_image_url( $val ) ) {
-				$data = self::customizer_sideload_image( $val );
-				if ( ! is_wp_error( $data ) ) {
-					$mods[ $key ] = $data->url;
-
-					// Handle header image controls.
-					if ( isset( $mods[ $key . '_data' ] ) ) {
-						$mods[ $key . '_data' ] = $data;
-						update_post_meta( $data->attachment_id, '_wp_attachment_is_custom_header', get_stylesheet() );
+			if ( !empty( $val ) && is_array( $val ) ) {
+				foreach ( $val as $sub_key => $sub_val ) {
+					if ( !empty( $sub_val ) && is_string( $sub_val ) ) {
+						$new_val = self::customizer_image_transform( $sub_val );
+						if ( $new_val !== $sub_val ) {
+							$mods[ $key ][ $sub_key ] = $new_val;
+						}
+					} else if ( !empty( $sub_val ) && is_array( $sub_val ) ) {
+						foreach ( $sub_val as $sub_sub_key => $sub_sub_val ) {
+							if ( !empty( $sub_sub_val ) && is_string( $sub_sub_val ) ) {
+								$new_val = self::customizer_image_transform( $sub_sub_val );
+								if ( $new_val !== $sub_sub_val ) {
+									$mods[ $key ][ $sub_key ][ $sub_sub_key ] = $new_val;
+								}
+							} else if ( !empty( $sub_sub_val ) && is_array( $sub_sub_val ) ) {
+								foreach ( $sub_sub_val as $sub_sub_sub_key => $sub_sub_sub_val ) {
+									if ( !empty( $sub_sub_sub_val ) && is_string( $sub_sub_sub_val ) ) {
+										$new_val = self::customizer_image_transform( $sub_sub_sub_val );
+										if ( $new_val !== $sub_sub_sub_val ) {
+											$mods[ $key ][ $sub_key ][ $sub_sub_key ][ $sub_sub_sub_key ] = $new_val;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			} else if ( !empty( $val ) && is_string( $val ) ) {
+				$new_val = self::customizer_image_transform( $val );
+				if ( $new_val !== $val ) {
+					$mods[ $key ] = $new_val;
+				}
+			}
+		}
+		return $mods;
+	}
+	/**
+	 * Helper function: Customizer import - imports images for settings saved as mods.
+	 *
+	 * @since 1.1.1
+	 * @param array $mods An array of customizer mods.
+	 * @return array The mods array with any new import data.
+	 */
+	private static function customizer_image_transform( $maybe_image_url ) {
+		// Check if val is a string.
+		if ( is_string( $maybe_image_url ) ) {
+			if ( self::customizer_is_image_url( $maybe_image_url ) ) {
+				$url_already = self::customizer_check_for_image( $maybe_image_url );
+				if ( $url_already ) {
+					return $url_already;
+				} else {
+					$data = self::customizer_sideload_image( $maybe_image_url );
+					if ( ! is_wp_error( $data ) && isset( $data->url ) ) {
+						return $data->url;
 					}
 				}
 			}
 		}
 
-		return $mods;
+		return $maybe_image_url;
+	}
+
+	/**
+	 * Helper function: Sideload Image import
+	 * Taken from the core media_sideload_image function and
+	 * modified to return an array of data instead of html.
+	 *
+	 * @since 1.1.1.
+	 * @param string $file The image file path.
+	 * @return array An array of image data.
+	 */
+	private static function customizer_check_for_image( $file ) {
+		if ( ! empty( $file ) ) {
+			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4)\b/i', $file, $matches );
+			$file_name = basename( $matches[0] );
+			$ext = array( ".png", ".jpg", ".gif", ".jpeg", ".webp", ".mp4" );
+			$clean_filename = str_replace( $ext, "", $file_name );
+			$clean_filename = trim( html_entity_decode( sanitize_title( $clean_filename ) ) );
+			if ( post_exists( $clean_filename ) ) {
+				$attachment = self::get_page_by_title( $clean_filename, OBJECT, 'attachment' );
+				if ( ! empty( $attachment ) ) {
+					return wp_get_attachment_url( $attachment->ID );
+				}
+			} else {
+				$attachment_id = self::get_image_id_by_filename( $file_name );
+				if ( ! empty( $attachment_id ) ) {
+					return wp_get_attachment_url( $attachment_id );
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get the ID of an attachment by its filename.
+	 *
+	 * @param string $filename The filename of the image (e.g., 'my-image.jpg').
+	 * @return int|null The attachment ID if found, otherwise null.
+	 */
+	public static function get_image_id_by_filename( $filename ) {
+		global $wpdb;
+
+		if ( empty( $filename ) ) {
+			return null;
+		}
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND meta_value LIKE %s",
+				'%' . $wpdb->esc_like( $filename )
+			)
+		);
+		if ( $post_id ) {
+			return (int) $post_id;
+		}
+
+		return null;
+	}
+	/**
+	 * Get Page by title.
+	 *
+	 * @param string $page_title The title of the page to get.
+	 * @param string $output The output type.
+	 * @param string $post_type The post type to get.
+	 * @return array|object|null The page data.
+	 */
+	public static function get_page_by_title( $page_title, $output = OBJECT, $post_type = 'page' ) {
+		$query = new \WP_Query(
+			array(
+				'post_type'              => $post_type,
+				'title'                  => $page_title,
+				'post_status'            => 'all',
+				'posts_per_page'         => 1,
+				'no_found_rows'          => true,
+				'ignore_sticky_posts'    => true,
+				'update_post_term_cache' => false,
+				'update_post_meta_cache' => false,
+				'orderby'                => 'date',
+				'order'                  => 'ASC',
+			)
+		);
+
+		if ( ! empty( $query->post ) ) {
+			$_post = $query->post;
+
+			if ( ARRAY_A === $output ) {
+				return $_post->to_array();
+			} elseif ( ARRAY_N === $output ) {
+				return array_values( $_post->to_array() );
+			}
+
+			return $_post;
+		}
+
+		return null;
 	}
 
 	/**

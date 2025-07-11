@@ -204,7 +204,7 @@ class Dotenv
      *
      * @throws \KadenceWP\KadenceStarterTemplates\Dotenv\Exception\InvalidFileException
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public static function parse(string $content)
     {
@@ -220,7 +220,7 @@ class Dotenv
      *
      * @throws \KadenceWP\KadenceStarterTemplates\Dotenv\Exception\InvalidPathException|\KadenceWP\KadenceStarterTemplates\Dotenv\Exception\InvalidEncodingException|\KadenceWP\KadenceStarterTemplates\Dotenv\Exception\InvalidFileException
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public function load()
     {
@@ -234,7 +234,7 @@ class Dotenv
      *
      * @throws \KadenceWP\KadenceStarterTemplates\Dotenv\Exception\InvalidEncodingException|\KadenceWP\KadenceStarterTemplates\Dotenv\Exception\InvalidFileException
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public function safeLoad()
     {
