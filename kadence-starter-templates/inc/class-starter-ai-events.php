@@ -97,16 +97,9 @@ class Kadence_Starter_Templates_AI_Events {
 	 */
 	public function get_current_license_key() {
 
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( ! empty( $data['key'] ) ) {
-				return $data['key'];
-			}
-		} else {
-			$key = get_license_key( 'kadence-starter-templates' );
-			if ( ! empty( $key ) ) {
-				return $key;
-			}
+		$license_data = kadence_starter_templates_get_license_data();
+		if ( ! empty( $license_data['api_key'] ) ) {
+			return $license_data['api_key'];
 		}
 		return '';
 	}
@@ -158,34 +151,6 @@ class Kadence_Starter_Templates_AI_Events {
 		);
 	}
 	/**
-	 * Get the current license key for the plugin.
-	 */
-	public function get_pro_license_data() {
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( empty( $data['key'] ) ) {
-				$data = [ 
-					'key'     => get_license_key( 'kadence-starter-templates' ),
-					'product' => 'kadence-starter-templates',
-					'email'   => '',
-				];
-			}
-		} else {
-			$data = [ 
-				'key'     => get_license_key( 'kadence-starter-templates' ),
-				'product' => 'kadence-starter-templates',
-				'email'   => '',
-			];
-		}
-		$license_data = [
-			'api_key'   => ( ! empty( $data['key'] ) ? $data['key'] : '' ),
-			'api_email' => ( ! empty( $data['email'] ) ? $data['email'] : '' ), // Backwards compatibility with older licensing.
-			'site_url'  => get_original_domain(),
-			'product_slug' => ( ! empty( $data['product'] ) ? $data['product'] : 'kadence-starter-templates' ),
-		];
-		return $license_data;
-	}
-	/**
 	 * Constructs a consistent X-Prophecy-Token header.
 	 *
 	 * @param array $args An array of arguments to include in the encoded header.
@@ -194,7 +159,7 @@ class Kadence_Starter_Templates_AI_Events {
 	 */
 	public function get_prophecy_token_header( $args = [] ) {
 		$site_name    = get_bloginfo( 'name' );
-		$license_data = $this->get_pro_license_data();
+		$license_data = kadence_starter_templates_get_license_data();
 		$product_slug = ( ! empty( $license_data['product'] ) ? $license_data['product'] : 'kadence-starter-templates' );
 		$defaults = [
 			'domain'          => ! empty( $license_data['site_url'] ) ? $license_data['site_url'] : '',

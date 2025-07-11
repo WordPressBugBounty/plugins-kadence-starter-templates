@@ -821,14 +821,18 @@ class Starter_Templates {
 	 *
 	 * @return array{key: string, email: string}
 	 */
-	public function get_current_license_data(): array {
-
-		$license_data = array(
-			'ktp_api_key'   => $this->get_current_license_key(),
-			'activation_email' => $this->get_current_license_email(),
+	public function get_current_scripts_license_data(): array {
+		$license_data = kadence_starter_templates_get_license_data();
+		$scripts_data = array(
+			'ktp_api_key'   => $license_data['api_key'],
+			'activation_email' => $license_data['api_email'],
 		);
+		if ( empty( $scripts_data['activation_email'] ) ) {
+			$current_user = wp_get_current_user();
+			$scripts_data['activation_email'] = $current_user->user_email;
+		}
 
-		return $license_data;
+		return $scripts_data;
 	}
 	/**
 	 * Get the current license key for the plugin.
@@ -837,34 +841,11 @@ class Starter_Templates {
 	 */
 	public function get_current_license_key() {
 
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( ! empty( $data['key'] ) ) {
-				return $data['key'];
-			}
-		} else {
-			$key = get_license_key( 'kadence-starter-templates' );
-			if ( ! empty( $key ) ) {
-				return $key;
-			}
+		$license_data = kadence_starter_templates_get_license_data();
+		if ( ! empty( $license_data['api_key'] ) ) {
+			return $license_data['api_key'];
 		}
 		return '';
-	}
-	/**
-	 * Get the current license email for the plugin.
-	 *
-	 * @return string 
-	 */
-	public function get_current_license_email() {
-
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( ! empty( $data['email'] ) ) {
-				return $data['email'];
-			}
-		}
-		$current_user = wp_get_current_user();
-		return $current_user->user_email;
 	}
 
 	/**
@@ -1223,7 +1204,7 @@ class Starter_Templates {
 			// Check for multiple images.
 			$has_content = ( 0 < wp_count_posts( 'attachment' )->inherit ? true : false );
 		}
-		$pro_data = $this->get_current_license_data();
+		$pro_data = $this->get_current_scripts_license_data();
 		$current_user     = wp_get_current_user();
 		$user_email       = $current_user->user_email;
 		$show_builder_choice = ( 'active' === $plugins['elementor']['state'] ? true : false );

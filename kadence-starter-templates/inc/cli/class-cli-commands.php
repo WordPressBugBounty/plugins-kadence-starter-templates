@@ -11,7 +11,6 @@ use WP_CLI;
 use KadenceWP\KadenceStarterTemplates\Starter_Import_Processes;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
-use function kadence_blocks_get_current_license_data;
 use function wp_remote_get;
 use function is_wp_error;
 use function wp_remote_retrieve_response_code;

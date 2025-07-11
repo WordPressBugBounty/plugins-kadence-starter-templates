@@ -19,7 +19,6 @@ use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_disconnect_u
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\is_authorized;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\build_auth_url;
-use function kadence_blocks_get_current_license_data;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -56,26 +55,6 @@ class Site_Assist_Dash {
 		}
 		add_action( 'init', [ $this, 'init_config' ] );
 		add_action( 'rest_api_init', [ $this, 'register_api_endpoints' ] );
-	}
-	/**
-	 * Get the current license key for the plugin.
-	 *
-	 * @return string 
-	 */
-	public function get_current_license_key() {
-
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( ! empty( $data['key'] ) ) {
-				return $data['key'];
-			}
-		} else {
-			$key = get_license_key( 'kadence-starter-templates' );
-			if ( ! empty( $key ) ) {
-				return $key;
-			}
-		}
-		return '';
 	}
 	/**
 	 * Add the admin page
@@ -803,7 +782,8 @@ class Site_Assist_Dash {
 			$token          = get_authorization_token( $slug );
 			$auth_url       = build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
 		}
-		$license_key    = $this->get_current_license_key();
+		$license_data = kadence_starter_templates_get_license_data();
+		$license_key = $license_data['api_key'];
 		$disconnect_url = '';
 		$is_authorized  = false;
 		if ( ! empty( $license_key ) ) {

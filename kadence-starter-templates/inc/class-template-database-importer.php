@@ -8,7 +8,7 @@
 
 namespace KadenceWP\KadenceStarterTemplates;
 
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+use function kadence_starter_templates_get_license_data;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -289,18 +289,6 @@ class Template_Database_Importer {
 		return $this->local_template_data_path;
 	}
 	/**
-	 * Get the current license key for the plugin.
-	 */
-	public function get_current_license_key() {
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( ! empty( $data['key'] ) ) {
-				return $data['key'];
-			}
-		}
-		return get_license_key( 'kadence-starter-templates' );
-	}
-	/**
 	 * Get the local data filename.
 	 *
 	 * This is a hash, generated from the site-URL, the wp-content path and the URL.
@@ -310,11 +298,21 @@ class Template_Database_Importer {
 	 * @return string
 	 */
 	public function get_local_template_data_filename() {
-		$ktp_api = $this->get_current_license_key();
-		if ( empty( $ktp_api ) ) {
+		$license_data = kadence_starter_templates_get_license_data();
+		$product_slug = 'kadence-starter-templates';
+		if ( ! empty( $license_data['product'] ) && 'kadence-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-pro';
+		} else if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-blocks-pro';
+		} else if ( ! empty( $license_data['product'] ) && ( 'kadence-creative-kit' === $license_data['product'] || 'kadence-blocks' === $license_data['product'] ) ) {
+			$product_slug = 'kadence-blocks';
+		}
+		if ( ! empty( $license_data['api_key'] ) ) {
+			$ktp_api = $license_data['api_key'];
+		} else {
 			$ktp_api = 'free';
 		}
-		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api );
+		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api . $product_slug );
 	}
 	/**
 	 * Main AJAX callback function for:

@@ -67,6 +67,7 @@ use function tribe_create_event;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+use function kadence_starter_templates_get_license_data;
 
 /**
  * Starter Import Processes.
@@ -109,6 +110,12 @@ class Starter_Import_Processes {
 	 * @var string
 	 */
 	private $env = '';
+	/**
+	 * The Product slug
+	 *
+	 * @var string
+	 */
+	private $product_slug = '';
 	/**
 	 * API email for kadence membership
 	 *
@@ -3895,21 +3902,28 @@ class Starter_Import_Processes {
 	 *
 	 * @return string The base64 encoded string.
 	 */
-	public function get_token_header( $args = array() ) {
-		$this->get_license_keys();
+	public function get_token_header( $args = [] ) {
 		$site_name    = get_bloginfo( 'name' );
-		$defaults = [
-			'domain'          => $this->site_url,
-			'key'             => ! empty( $this->api_key ) ? $this->api_key : '',
-			'email'           => ! empty( $this->api_email ) ? $this->api_email : '',
+		$license_data = kadence_starter_templates_get_license_data();
+		$product_slug = 'kadence-starter-templates';
+		if ( ! empty( $license_data['product'] ) && 'kadence-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-pro';
+		} else if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-blocks-pro';
+		} else if ( ! empty( $license_data['product'] ) && ( 'kadence-creative-kit' === $license_data['product'] || 'kadence-blocks' === $license_data['product'] ) ) {
+			$product_slug = 'kadence-blocks';
+		}
+		$defaults     = [
+			'domain'          => ! empty( $license_data['site_url'] ) ? $license_data['site_url'] : '',
+			'key'             => ! empty( $license_data['api_key'] ) ? $license_data['api_key'] : '',
+			'email'           => ! empty( $license_data['api_email'] ) ? $license_data['api_email'] : '',
 			'site_name'       => sanitize_title( $site_name ),
-			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', 'kadence-starter-templates' ),
+			'product_slug'    => apply_filters( 'kadence-blocks-auth-slug', $product_slug ),
 			'product_version' => KADENCE_STARTER_TEMPLATES_VERSION,
 		];
-		if ( ! empty( $this->env ) ) {
-			$defaults['env'] = $this->env;
+		if ( ! empty( $license_data['env'] ) ) {
+			$defaults['env'] = $license_data['env'];
 		}
-
 		$parsed_args = wp_parse_args( $args, $defaults );
 
 		return base64_encode( json_encode( $parsed_args ) );
@@ -5263,11 +5277,21 @@ class Starter_Import_Processes {
 	 * @return string
 	 */
 	public function get_local_template_data_filename() {
-		$ktp_api = $this->get_current_license_key();
-		if ( empty( $ktp_api ) ) {
+		$license_data = kadence_starter_templates_get_license_data();
+		$product_slug = 'kadence-starter-templates';
+		if ( ! empty( $license_data['product'] ) && 'kadence-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-pro';
+		} else if ( ! empty( $license_data['product'] ) && 'kadence-blocks-pro' === $license_data['product'] ) {
+			$product_slug = 'kadence-blocks-pro';
+		} else if ( ! empty( $license_data['product'] ) && ( 'kadence-creative-kit' === $license_data['product'] || 'kadence-blocks' === $license_data['product'] ) ) {
+			$product_slug = 'kadence-blocks';
+		}
+		if ( ! empty( $license_data['api_key'] ) ) {
+			$ktp_api = $license_data['api_key'];
+		} else {
 			$ktp_api = 'free';
 		}
-		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api );
+		return md5( $this->get_base_url() . $this->get_base_path() . $this->template_type . KADENCE_STARTER_TEMPLATES_VERSION . $ktp_api . $product_slug );
 	}
 	/**
 	 * Schedule a cleanup.
@@ -5605,7 +5629,7 @@ class Starter_Import_Processes {
 	 * @return bool    true or false.
 	 */
 	public function get_license_keys() {
-		$data = $this->get_pro_license_data();
+		$data = kadence_starter_templates_get_license_data();
 		if ( ! empty( $data['api_key'] ) ) {
 			$this->api_key = $data['api_key'];
 		}
@@ -5615,78 +5639,11 @@ class Starter_Import_Processes {
 		if ( ! empty( $data['site_url'] ) ) {
 			$this->site_url = $data['site_url'];
 		}
+		if ( ! empty( $data['product_slug'] ) ) {
+			$this->product_slug = $data['product_slug'];
+		}
 		if ( ! empty( $data['env'] ) ) {
 			$this->env = $data['env'];
-		}
-		return $data;
-	}
-	/**
-	 * Get the current license key for the plugin.
-	 */
-	public function get_current_license_key() {
-		if ( function_exists( 'kadence_blocks_get_current_license_data' ) ) {
-			$data = kadence_blocks_get_current_license_data();
-			if ( ! empty( $data['key'] ) ) {
-				return $data['key'];
-			}
-		}
-		return get_license_key( 'kadence-starter-templates' );
-	}
-	/**
-	 * Get the current license key for the plugin.
-	 */
-	public function get_current_license_email() {
-		// Check if we have pro active.
-		if ( class_exists( 'Kadence_Blocks_Pro' ) ) {
-			$license_key = get_option( 'stellarwp_uplink_license_key_kadence-blocks-pro', '' );
-			if ( ! empty( $license_key ) ) {
-				return '';
-			} else {
-				$license_data = $this->get_old_pro_license_data();
-				if ( $license_data && ! empty( $license_data['api_email'] ) ) {
-					return $license_data['api_email'];
-				}
-			}
-		}
-		return '';
-	}
-	/**
-	 * Get the current environment.
-	 */
-	public function get_current_env() {
-		if ( defined( 'STELLARWP_UPLINK_API_BASE_URL' ) ) {
-			switch ( STELLARWP_UPLINK_API_BASE_URL ) {
-				case 'https://licensing-dev.stellarwp.com':
-					return 'dev';
-				case 'https://licensing-staging.stellarwp.com':
-					return 'staging';
-			}
-		}
-		return '';
-	}
-	/**
-	 * Get the current license key for the plugin.
-	 */
-	public function get_pro_license_data() {
-		$license_data = array(
-			'api_key'   => $this->get_current_license_key(),
-			'api_email' => $this->get_current_license_email(),
-			'site_url'  => get_original_domain(),
-			'env'       => $this->get_current_env(),
-		);
-		return $license_data;
-	}
-	/**
-	 * Get the license information.
-	 *
-	 * @return array
-	 */
-	public function get_old_pro_license_data() {
-		$data = false;
-		if ( is_multisite() && ! apply_filters( 'kadence_activation_individual_multisites', true ) ) {
-			$data = get_site_option( 'kt_api_manager_kadence_gutenberg_pro_data' );
-		} else {
-			$data = get_option( 'kt_api_manager_kadence_gutenberg_pro_data' );
 		}
 		return $data;
 	}
