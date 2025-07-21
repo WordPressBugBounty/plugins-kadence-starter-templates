@@ -11,6 +11,7 @@ use WP_CLI;
 use KadenceWP\KadenceStarterTemplates\Starter_Import_Processes;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
+use function kadence_starter_templates_get_license_data;
 use function wp_remote_get;
 use function is_wp_error;
 use function wp_remote_retrieve_response_code;
@@ -230,7 +231,7 @@ class CLI_Commands {
 	 */
 	private function get_import_selection_data( $id = '', $env = 'live' ) {
 		// Get the local license key
-		$license_data = Starter_Import_Processes::get_instance()->get_pro_license_data();
+		$license_data = kadence_starter_templates_get_license_data();
 		// Make a request to the API to get the import selection data
 		$key = ( !empty( $license_data['api_key'] ) ? $license_data['api_key'] : '' );
 		$args = [
