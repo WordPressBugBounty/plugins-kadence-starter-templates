@@ -4,17 +4,17 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit01e9a66017796c5c918a5e94828b244d
+class ComposerStaticInite63c963822c6bb3b9cbe1dba3491ad4c
 {
     public static $prefixLengthsPsr4 = array (
-        'K' => 
+        'K' =>
         array (
             'KadenceWP\\KadenceStarterTemplates\\' => 34,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'KadenceWP\\KadenceStarterTemplates\\' => 
+        'KadenceWP\\KadenceStarterTemplates\\' =>
         array (
             0 => __DIR__ . '/../..' . '/inc/resources',
         ),
@@ -47,9 +47,9 @@ class ComposerStaticInit01e9a66017796c5c918a5e94828b244d
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit01e9a66017796c5c918a5e94828b244d::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit01e9a66017796c5c918a5e94828b244d::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit01e9a66017796c5c918a5e94828b244d::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInite63c963822c6bb3b9cbe1dba3491ad4c::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInite63c963822c6bb3b9cbe1dba3491ad4c::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInite63c963822c6bb3b9cbe1dba3491ad4c::$classMap;
 
         }, null, ClassLoader::class);
     }

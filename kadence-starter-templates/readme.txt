@@ -2,8 +2,8 @@
 Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
-Tested up to: 6.8
-Stable tag: 2.2.13
+Tested up to: 6.9
+Stable tag: 2.2.14
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -124,6 +124,9 @@ assist you with verification, CVE assignment, and notify the
 developers of this plugin.
 
 == Changelog ==
+= 2.2.14 =
+Release Date: 3rd Dec 2025
+* Fix: Issue with some translation functions in wp 6.9 causing issues with ai templates.
 
 = 2.2.13 =
 Release Date: 21st July 2025
