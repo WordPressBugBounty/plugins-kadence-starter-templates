@@ -21,6 +21,7 @@ return array(
     'KadenceWP\\KadenceStarterTemplates\\Image_Downloader\\Meta' => $baseDir . '/inc/resources/Image_Downloader/Meta.php',
     'KadenceWP\\KadenceStarterTemplates\\Image_Downloader\\Pexels_ID_Registry' => $baseDir . '/inc/resources/Image_Downloader/Pexels_ID_Registry.php',
     'KadenceWP\\KadenceStarterTemplates\\Image_Downloader\\WordPress_Importer' => $baseDir . '/inc/resources/Image_Downloader/WordPress_Importer.php',
+    'KadenceWP\\KadenceStarterTemplates\\License\\License_Provider' => $baseDir . '/inc/resources/License/License_Provider.php',
     'KadenceWP\\KadenceStarterTemplates\\Shutdown\\Contracts\\Terminable' => $baseDir . '/inc/resources/Shutdown/Contracts/Terminable.php',
     'KadenceWP\\KadenceStarterTemplates\\Shutdown\\Shutdown_Collection' => $baseDir . '/inc/resources/Shutdown/Shutdown_Collection.php',
     'KadenceWP\\KadenceStarterTemplates\\Shutdown\\Shutdown_Handler' => $baseDir . '/inc/resources/Shutdown/Shutdown_Handler.php',

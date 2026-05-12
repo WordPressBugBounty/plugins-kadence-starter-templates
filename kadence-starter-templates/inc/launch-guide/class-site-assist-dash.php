@@ -201,6 +201,8 @@ class Site_Assist_Dash {
 	}
 	/**
 	 * Loads admin style sheets and scripts
+	 *
+	 * @since 2.3.0 Adds the `disableAI` flag to the localized `kadenceAssistParams` payload.
 	 */
 	public function scripts() {
 		$kadence_starter_templates_meta = $this->get_asset_file( 'dist/starter-dash' );
@@ -224,6 +226,7 @@ class Site_Assist_Dash {
 				'settings'     => get_option( 'kadence_site_assist_tasks' ),
 				'outsideKB'    => $this->get_outside_kb(),
 				'stellarKB'    => $this->get_stellar_kb(),
+				'disableAI'    => kadence_starter_templates_disable_ai(),
 			]
 		);
 	}
@@ -261,7 +264,7 @@ class Site_Assist_Dash {
 				'url'   => 'https://www.kadencewp.com/help-center/knowledge-base/kadence-blocks/',
 			];
 		}
-		if ( class_exists( 'WP_SMTP' ) ) { 
+		if ( class_exists( 'WP_SMTP' ) ) {
 			$knowledge_bases[] = [
 				'title' => __( 'Solid Mail', 'kadence-starter-templates' ),
 				'url'   => 'https://solidwp.com/documentation/mail/',
@@ -328,14 +331,14 @@ class Site_Assist_Dash {
 			'Cache Enabler' => 'cache-enabler/cache-enabler.php',
 			'FlyingPress' => 'flying-press/flying-press.php',
 		);
-		
+
 		// Check if any of the caching plugins are active
 		foreach ($caching_plugins as $name => $plugin_file) {
 			if (is_plugin_active($plugin_file)) {
 				return $name; // Return the name of the active caching plugin
 			}
 		}
-		
+
 		return false; // No caching plugin is active
 	}
 	/**
@@ -350,7 +353,7 @@ class Site_Assist_Dash {
 			'htaccess' => false,
 		];
 		$performance_data['plugin_state'] = Plugin_Check::active_check( 'solid-performance/solid-performance.php' );
-		if ( defined( 'SWPSP_PLUGIN_FILE' ) ) { 
+		if ( defined( 'SWPSP_PLUGIN_FILE' ) ) {
 			$settings = get_option( 'solid_performance_settings', [] );
 			if ( isset( $settings['page_cache']['enabled'] ) && true === $settings['page_cache']['enabled'] ) {
 				$performance_data['caching'] = true;
@@ -584,7 +587,7 @@ class Site_Assist_Dash {
 			'trusted_devices' => false,
 			'firewall' => false,
 		];
-		
+
 		$security_data['plugin_state'] = Plugin_Check::active_check( 'ithemes-security-pro/ithemes-security-pro.php' );
 		if ( 'notactive' === $security_data['plugin_state'] ) {
 			$security_data['plugin_state'] = Plugin_Check::active_check( 'better-wp-security/better-wp-security.php' );
@@ -670,20 +673,20 @@ class Site_Assist_Dash {
 		}
 		if ( $security_data['plugin_state'] === 'notactive' ) {
 			// Check for Wordfence
-			if (function_exists('wordfence_install') || 
-			(defined('WORDFENCE_VERSION') && WORDFENCE_VERSION) || 
-			class_exists('wordfence')) { 
+			if (function_exists('wordfence_install') ||
+			(defined('WORDFENCE_VERSION') && WORDFENCE_VERSION) ||
+			class_exists('wordfence')) {
 				return [];
 			}
 			// Check for MalCare
-			if (function_exists('bvmc_install') || 
-			defined('BVMCVERSION') || 
+			if (function_exists('bvmc_install') ||
+			defined('BVMCVERSION') ||
 			class_exists('MalCare\\Plugin')) {
 				return [];
 			}
 			// Check for All In One WP Security
-			if (function_exists('aiowps_activate') || 
-			defined('AIO_WP_SECURITY_VERSION') || 
+			if (function_exists('aiowps_activate') ||
+			defined('AIO_WP_SECURITY_VERSION') ||
 			class_exists('AIOWPSEC_Installer')) {
 				return [];
 			}
@@ -701,7 +704,7 @@ class Site_Assist_Dash {
 			'plugin_verified' => ! empty( $site_assist_data['email_test'] ) ? true : false,
 		];
 		$email_data['plugin_state'] = Plugin_Check::active_check( 'wp-smtp/wp-smtp.php' );
-		if ( class_exists( 'WP_SMTP' ) ) { 
+		if ( class_exists( 'WP_SMTP' ) ) {
 			$providers = get_option( 'solid_smtp_providers', [] );
 			if ( ! empty( $providers ) && is_array( $providers ) ) {
 				foreach ( $providers as $provider ) {
@@ -713,22 +716,22 @@ class Site_Assist_Dash {
 		}
 		if ( $email_data['plugin_state'] === 'notactive' ) {
 		// Check for Fluent SMTP
-			if (function_exists('fluentSmtpInit') || 
-			defined('FLUENTMAIL') || 
+			if (function_exists('fluentSmtpInit') ||
+			defined('FLUENTMAIL') ||
 			class_exists('FluentMail\\App\\App')) {
 				return [];
 			}
-		
+
 			// Check for WP Mail SMTP
-			if (function_exists('wp_mail_smtp') || 
-			defined('WPMS_PLUGIN_VER') || 
+			if (function_exists('wp_mail_smtp') ||
+			defined('WPMS_PLUGIN_VER') ||
 			class_exists('WPMailSMTP\\WP_Mail_SMTP')) {
 				return [];
 			}
-		
+
 			// Check for Sure Mail
-			if (function_exists('sure_mail_init') || 
-			defined('SURE_MAIL_VERSION') || 
+			if (function_exists('sure_mail_init') ||
+			defined('SURE_MAIL_VERSION') ||
 			class_exists('SureMail\\Plugin')) {
 				return [];
 			}
@@ -772,25 +775,33 @@ class Site_Assist_Dash {
 	}
 	/**
 	 * Loads admin style sheets and scripts
+	 *
+	 * @since 2.3.0 Skips the AI starter card and the licensing/auth lookups when AI is disabled,
+	 *              and falls back to plugin-presence detection for the donation card when the AI
+	 *              wizard hasn't run.
 	 */
 	public function get_action_content() {
-		$slug = class_exists( '\KadenceWP\KadenceBlocks\App' ) ? 'kadence-blocks' : 'kadence-starter-templates';
-		if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
-			$token          = \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_authorization_token( $slug );
-			$auth_url       = \KadenceWP\KadenceBlocks\StellarWP\Uplink\build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
-		} else {
-			$token          = get_authorization_token( $slug );
-			$auth_url       = build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
-		}
-		$license_data = kadence_starter_templates_get_license_data();
-		$license_key = $license_data['api_key'];
+		$disable_ai        = kadence_starter_templates_disable_ai();
+		$auth_url       = '';
 		$disconnect_url = '';
 		$is_authorized  = false;
-		if ( ! empty( $license_key ) ) {
-			$is_authorized = is_authorized( $license_key, apply_filters( 'kadence-blocks-auth-slug', $slug ), ( ! empty( $token ) ? $token : '' ), get_license_domain() );
-		}
-		if ( $is_authorized ) {
-			$disconnect_url = get_disconnect_url( apply_filters( 'kadence-blocks-auth-slug', $slug ) );
+		if ( ! $disable_ai ) {
+			$slug = class_exists( '\KadenceWP\KadenceBlocks\App' ) ? 'kadence-blocks' : 'kadence-starter-templates';
+			if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
+				$token    = \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_authorization_token( $slug );
+				$auth_url = \KadenceWP\KadenceBlocks\StellarWP\Uplink\build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
+			} else {
+				$token    = get_authorization_token( $slug );
+				$auth_url = build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
+			}
+			$license_data = kadence_starter_templates_get_license_data();
+			$license_key  = $license_data['api_key'];
+			if ( ! empty( $license_key ) ) {
+				$is_authorized = is_authorized( $license_key, apply_filters( 'kadence-blocks-auth-slug', $slug ), ( ! empty( $token ) ? $token : '' ), get_license_domain() );
+			}
+			if ( $is_authorized ) {
+				$disconnect_url = get_disconnect_url( apply_filters( 'kadence-blocks-auth-slug', $slug ) );
+			}
 		}
 		$prophecy_data = json_decode( get_option( 'kadence_blocks_prophecy' ), true );
 		$site_assist_data = get_option( 'kadence_site_assist_tasks' );
@@ -823,7 +834,13 @@ class Site_Assist_Dash {
 		$goals = isset( $prophecy_data['goals'] ) && is_array( $prophecy_data['goals'] ) ? $prophecy_data['goals'] : [];
 		$donation_data = [];
 
-		if ( in_array( 'donations', $goals ) ) {
+		$show_donation = in_array( 'donations', $goals );
+		if ( ! $show_donation && $disable_ai ) {
+			// When AI is hidden the wizard was never run, so fall back to plugin-presence detection.
+			$give_state    = Plugin_Check::active_check( 'give/give.php' );
+			$show_donation = ( 'notactive' !== $give_state );
+		}
+		if ( $show_donation ) {
 			$donation_data = $this->get_donation_data();
 		}
 		$learndash_data = [];
@@ -896,8 +913,9 @@ class Site_Assist_Dash {
 		$display_name = $current_user->display_name;
 		// Username.
 		$username = $current_user->user_login;
-		$return_data = [
-			[
+		$return_data = [];
+		if ( ! $disable_ai ) {
+			$return_data[] = [
 				'title'       => __( 'AI Powered Site and Starter Template', 'kadence-starter-templates' ),
 				'description' => __( 'Get started with your new site by setting up key information and importing a starter site.', 'kadence-starter-templates' ),
 				'slug'        => 'ai-starter-site',
@@ -930,8 +948,9 @@ class Site_Assist_Dash {
 						'requires'    => $has_ai_profile ? false : true,
 					]
 				]
-			],
-			[
+			];
+		}
+		$return_data[] = [
 				'title'       => __( 'Basic Site Setup', 'kadence-starter-templates' ),
 				'description' => __( 'Get started with your new site by setting up key information.', 'kadence-starter-templates' ),
 				'slug'        => 'site-setup',
@@ -1009,8 +1028,8 @@ class Site_Assist_Dash {
 						'sameTab'     => true,
 					]
 				],
-			],
-			[
+			];
+			$return_data[] = [
 				'title'       => __( 'Design & Customization', 'kadence-starter-templates' ),
 				'description' => __( 'Customize your site to your liking.', 'kadence-starter-templates' ),
 				'slug'        => 'design-customization',
@@ -1079,8 +1098,7 @@ class Site_Assist_Dash {
 						'sameTab'     => true,
 					],
 				],
-			],
-		];
+			];
 		if ( !empty ( $email_data ) ) {
 			$return_data[] = $email_data;
 		}

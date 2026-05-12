@@ -850,6 +850,8 @@ class Starter_Templates {
 
 	/**
 	 * Loads admin style sheets and scripts
+	 *
+	 * @since 2.3.0 Adds the `disableAI` flag to the localized `kadenceStarterParams` payload.
 	 */
 	public function scripts() {
 		$using_network_enabled = false;
@@ -1260,6 +1262,7 @@ class Starter_Templates {
 				'hasElementor'        => class_exists( '\Elementor\Plugin' ) ? true : false,
 				'bannerImage'         => KADENCE_STARTER_TEMPLATES_URL . 'assets/images/kadence-ai-starter-templates.jpg',
 				'imageURL'            => KADENCE_STARTER_TEMPLATES_URL . 'assets/images/',
+				'disableAI'           => kadence_starter_templates_disable_ai(),
 			)
 		);
 	}

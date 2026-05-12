@@ -1,0 +1,46 @@
+{
+	"build": [
+		"rm -rf vendor",
+		"@composer install --no-dev --no-scripts",
+		"@composer run strauss-release",
+		"npm install --legacy-peer-deps",
+		"npm run build"
+	],
+	"build_dev": [
+		"rm -rf vendor",
+		"@composer install --no-dev --no-scripts",
+		"@composer run strauss-release",
+		"npm install --legacy-peer-deps",
+		"npm run build"
+	],
+	"checks": {
+		"version-conflict": {
+			"fail_method": "error",
+			"fail_method_dev": "warn"
+		}
+	},
+	"paths": {
+		"build_dir": ".pup-build",
+		"changelog": "readme.txt",
+		"css": [],
+		"js": [],
+		"versions": [
+			{
+				"file": "kadence-starter-templates.php",
+				"regex": "( \\* Version: +)(.+)"
+			},
+			{
+				"file": "kadence-starter-templates.php",
+				"regex": "(define\\( +['\"]KADENCE_STARTER_TEMPLATES_VERSION['\"], +['\"])([^'\"]+)"
+			},
+			{
+				"file": "readme.txt",
+				"regex": "(Stable tag: +)(.+)"
+			}
+		],
+		"zip_dir": ".pup-zip"
+	},
+	"repo": "stellarwp/kadence-starter-templates",
+	"zip_use_default_ignore": false,
+	"zip_name": "kadence-starter-templates"
+}

@@ -1,9 +1,9 @@
-=== AI Powered Starter Templates by Kadence WP ===
+=== Kadence Starter Templates — Predesigned Website Templates  ===
 Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
 Tested up to: 6.9
-Stable tag: 2.2.14
+Stable tag: 2.3.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -14,28 +14,26 @@ Build a Beautiful "performance optimized" website with ease.
 
 = BUILD A BEAUTIFUL "PERFORMANCE OPTIMIZED" WEBSITE WITH EASE =
 
-Create and customize professionally designed websites in minutes with content already tailored to you through the help of AI.
+Build and customize professionally designed websites in minutes with ready-to-use starter templates.
 
-Kadence Starter Templates gives you AI powered starter templates that have images and text generated for your specific site. Each AI powered template is optimized for performance, accessibility and built using the WordPress Block editor.
+Kadence Starter Templates provides a collection of high-quality website designs built with the WordPress block editor and Kadence Blocks, optimized for performance, accessibility, and flexibility.
 
-Unlike other website starter templates that are difficult to change fonts and colors, our ai powered templates are built on a globally linked color palette and font selector. This allows you to change the color scheme or font on your entire website with a few mouse clicks.
-
-Simply setup your business profile, choose your template, choose your colors and fonts, and import. Done!
+Each template is designed with a global color palette and typography system, allowing you to quickly adapt the design to match your brand.
 
 = VIDEO OVERVIEW =
 https://www.youtube.com/watch?v=JxQd4jYQ96o
 
 = KADENCE STARTER TEMPLATES PUTS THE E BACK IN EASY =
 
-Kadence Starter Templates using the Kadence Theme for all the designs. 
+Kadence Starter Templates using the Kadence Theme for all the designs.
 
-Why the Kadence Theme? 
+Why the Kadence Theme?
 
 **Header/Footer Builder** - Unlike other themes, the Kadence Theme comes with a drag and drop header/footer builder. This allows unlimited design possibilities.
 
 **Globally Linked Color Palette** - The color of element on your website is linked to a global color palette. Want to change a color, change it in one place and the color changes across your entire website.
 
-**Globally Linked Fonts** - Like with the color system, the same goes for your font choices. Want to change a font, change it in one place and the font changes across your entire website. 
+**Globally Linked Fonts** - Like with the color system, the same goes for your font choices. Want to change a font, change it in one place and the font changes across your entire website.
 
 **WooCommerce Integration** - The Kadence Theme features the most advanced WooCommerce integration to allow you to: customize your WooCommerce product pages, has a flyout cart, cart icon in header, product page bullet points, my account page customizations, and more.
 
@@ -43,11 +41,11 @@ Why the Kadence Theme?
 
 = KADENCE STARTER TEMPLATES PUTS THE P BACK IN PERFORMANCE =
 
-Are you concerned with how fast your website loads? If not you should be because it impacts wether a website visitor stays on your website or leaves. And Google doesn't like it when people leave your website. 
+Are you concerned with how fast your website loads? If not you should be because it impacts wether a website visitor stays on your website or leaves. And Google doesn't like it when people leave your website.
 
 Because of this we obsess over website performance so your don't have to.
 
-All of our starter templates are performance optimized and will load faster the other website templates. 
+All of our starter templates are performance optimized and will load faster the other website templates.
 
 = GET YOUR NEXT WEBSITE INSTALLED AND CUSTOMIZED IN 5 STEPS! =
 
@@ -81,19 +79,19 @@ All of our starter templates are designed to work with the free Kadence Theme.
 
 = Will this work with my page builder? =
 
-Currently all the starter templates are built using the default WordPress block builder and Kadence Blocks which adds page builder like features to your website. We have some classic templates built with Elementor. In the future and will be keeping tabs on what our users request.  
+Currently all the starter templates are built using the default WordPress block builder and Kadence Blocks which adds page builder like features to your website. We have some classic templates built with Elementor. In the future and will be keeping tabs on what our users request.
 
 = Can I import a starter template on an existing website? =
 
-Yes you can, however it's best that you install one of our starter templates on a fresh WordPress installation. 
+Yes you can, however it's best that you install one of our starter templates on a fresh WordPress installation.
 
 = Do I still need the plugin after I install a starter template? =
 
-You can disable the plugin however you would lose out on the additional features we are adding to make it easier to having and customizing your website. 
+You can disable the plugin however you would lose out on the additional features we are adding to make it easier to having and customizing your website.
 
 = Will this slow down my website? =
 
-Absolutely not.  
+Absolutely not.
 
 = Where do I report security bugs found in this plugin? =
 
@@ -124,6 +122,10 @@ assist you with verification, CVE assignment, and notify the
 developers of this plugin.
 
 == Changelog ==
+= 2.3.0 =
+Release Date: 11th May 2026
+* Tweak: Improvements to the starter templates experience for managed hosting environments.
+
 = 2.2.14 =
 Release Date: 3rd Dec 2025
 * Fix: Issue with some translation functions in wp 6.9 causing issues with ai templates.
@@ -293,7 +295,7 @@ Release Date: 14th April 2025
 = 1.2.21 =
 * Add: Support for depicter.
 * Add: Filter for filesystem.
-* Fix: Issue with in fluent forms. 
+* Fix: Issue with in fluent forms.
 
 = 1.2.20 =
 * Add: Search to grid view.
@@ -301,10 +303,10 @@ Release Date: 14th April 2025
 
 = 1.2.19 =
 * Add: support for importing's with Seriously Simple Podcasting.
-* Fix: Issue where gradients were not importing correctly. 
+* Fix: Issue where gradients were not importing correctly.
 
 = 1.2.18 =
-* Fix: Unescaped variable. 
+* Fix: Unescaped variable.
 
 = 1.2.17 =
 * Fix: Possible admin+ PHP objection injection in settings importer.
@@ -333,7 +335,7 @@ Release Date: 14th April 2025
 
 = 1.2.11 =
 * Fix: Issue with event-tickets.
-* Fix: issue with CSS import in some situations. 
+* Fix: issue with CSS import in some situations.
 
 = 1.2.10 =
 * Update: Text and import flow.

@@ -4,6 +4,7 @@ namespace KadenceWP\KadenceStarterTemplates;
 
 use InvalidArgumentException;
 use KadenceWP\KadenceStarterTemplates\Cache\Cache_Provider;
+use KadenceWP\KadenceStarterTemplates\License\License_Provider;
 use KadenceWP\KadenceStarterTemplates\Image_Downloader\Image_Downloader_Provider;
 use KadenceWP\KadenceStarterTemplates\Shutdown\Shutdown_Provider;
 use KadenceWP\KadenceStarterTemplates\StellarWP\ProphecyMonorepo\Container\Contracts\Container;
@@ -30,6 +31,7 @@ final class App {
 	 * @var class-string<Providable>
 	 */
 	private $providers = array(
+		License_Provider::class,
 		Image_Downloader_Provider::class,
 		Cache_Provider::class,
 		Shutdown_Provider::class,

@@ -36,6 +36,7 @@ class ComposerStaticInite63c963822c6bb3b9cbe1dba3491ad4c
         'KadenceWP\\KadenceStarterTemplates\\Image_Downloader\\Meta' => __DIR__ . '/../..' . '/inc/resources/Image_Downloader/Meta.php',
         'KadenceWP\\KadenceStarterTemplates\\Image_Downloader\\Pexels_ID_Registry' => __DIR__ . '/../..' . '/inc/resources/Image_Downloader/Pexels_ID_Registry.php',
         'KadenceWP\\KadenceStarterTemplates\\Image_Downloader\\WordPress_Importer' => __DIR__ . '/../..' . '/inc/resources/Image_Downloader/WordPress_Importer.php',
+        'KadenceWP\\KadenceStarterTemplates\\License\\License_Provider' => __DIR__ . '/../..' . '/inc/resources/License/License_Provider.php',
         'KadenceWP\\KadenceStarterTemplates\\Shutdown\\Contracts\\Terminable' => __DIR__ . '/../..' . '/inc/resources/Shutdown/Contracts/Terminable.php',
         'KadenceWP\\KadenceStarterTemplates\\Shutdown\\Shutdown_Collection' => __DIR__ . '/../..' . '/inc/resources/Shutdown/Shutdown_Collection.php',
         'KadenceWP\\KadenceStarterTemplates\\Shutdown\\Shutdown_Handler' => __DIR__ . '/../..' . '/inc/resources/Shutdown/Shutdown_Handler.php',
