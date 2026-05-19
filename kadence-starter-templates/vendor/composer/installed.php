@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'kadencewp/kadence-starter-templates',
-        'pretty_version' => '2.3.0',
-        'version' => '2.3.0.0',
-        'reference' => 'd19a494d8c688c765fdb096c1146df62835ec040',
+        'pretty_version' => '2.3.1',
+        'version' => '2.3.1.0',
+        'reference' => '68fa1091d3c4e2b02fc94ebc7ffcb85f91be88a1',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -38,9 +38,9 @@
             'dev_requirement' => false,
         ),
         'kadencewp/kadence-starter-templates' => array(
-            'pretty_version' => '2.3.0',
-            'version' => '2.3.0.0',
-            'reference' => 'd19a494d8c688c765fdb096c1146df62835ec040',
+            'pretty_version' => '2.3.1',
+            'version' => '2.3.1.0',
+            'reference' => '68fa1091d3c4e2b02fc94ebc7ffcb85f91be88a1',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
