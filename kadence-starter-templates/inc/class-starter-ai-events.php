@@ -7,11 +7,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_authorization_token;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\is_authorized;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
 
 /**
  * Class responsible for sending events AI Events to Stellar Prophecy WP AI.
@@ -112,18 +109,7 @@ class Kadence_Starter_Templates_AI_Events {
 	 */
 	public function handle_event( string $name, array $context ): void {
 		// Only pass tracking events if AI has been activated through Opt in.
-		$slug = class_exists( '\KadenceWP\KadenceBlocks\App' ) ? 'kadence-blocks' : 'kadence-starter-templates';
-		if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
-			$token          = \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_authorization_token( $slug );
-		} else {
-			$token          = get_authorization_token( $slug );
-		}
-		$license_key    = $this->get_current_license_key();
-		$is_authorized = false;
-		if ( ! empty( $token ) && ! empty( $license_key ) ) {
-			$is_authorized = is_authorized( $license_key, apply_filters( 'kadence-blocks-auth-slug', $slug ), $token, get_license_domain() );
-		}
-		if ( ! $is_authorized ) {
+		if ( ! kadence_starter_templates_is_legacy_license_authorized() ) {
 			return;
 		}
 

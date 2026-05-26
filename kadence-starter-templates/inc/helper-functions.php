@@ -11,10 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\build_auth_url;
+use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_authorization_token;
+use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_disconnect_url;
+use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_authorization_token;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\is_authorized;
 
 /**
@@ -50,6 +52,108 @@ function kadence_starter_templates_get_license_data() {
 }
 
 /**
+ * Returns the Uplink slug used for the legacy AI authorization flow on this site.
+ *
+ * Mirrors the slug-selection logic used when the auth flow originally
+ * issued the token, so runtime checks (token retrieval, license validation,
+ * disconnect URL) all align with what was registered server-side. The
+ * `kadence-blocks-auth-slug` filter is honoured (Kadence Blocks Pro hooks
+ * it to force `kadence-blocks-pro`).
+ *
+ * @since 2.3.2
+ *
+ * @return string
+ */
+function kadence_starter_templates_get_ai_auth_slug(): string {
+	$slug = class_exists( '\KadenceWP\KadenceBlocks\App' ) ? 'kadence-blocks' : 'kadence-starter-templates';
+
+	return (string) apply_filters( 'kadence-blocks-auth-slug', $slug );
+}
+
+/**
+ * Returns the stored Uplink auth token for the AI flow.
+ *
+ * Routes through Kadence Blocks' Uplink container when KB is active so
+ * that the slugs registered there (`kadence-blocks`, `kadence-blocks-pro`)
+ * resolve to a Token_Manager. Otherwise uses Starter Templates' own
+ * container. Returns an empty string when no token is stored.
+ *
+ * @since 2.3.2
+ *
+ * @return string
+ */
+function kadence_starter_templates_get_ai_auth_token(): string {
+	$slug = kadence_starter_templates_get_ai_auth_slug();
+
+	if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
+		$token = \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_authorization_token( $slug );
+	} else {
+		$token = get_authorization_token( $slug );
+	}
+
+	return (string) ( $token ?? '' );
+}
+
+/**
+ * Returns the stored Uplink license key associated with the AI auth slug.
+ *
+ * This is the slug-matched key that the server has on file for the token,
+ * not the broader cascade from `kadence_starter_templates_get_license_data()`.
+ *
+ * @since 2.3.2
+ *
+ * @return string
+ */
+function kadence_starter_templates_get_ai_license_key(): string {
+	$slug = kadence_starter_templates_get_ai_auth_slug();
+
+	if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
+		return (string) \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_license_key( $slug );
+	}
+
+	return (string) get_license_key( $slug );
+}
+
+/**
+ * Builds the "Activate Kadence AI" URL.
+ *
+ * This is where the auth token is originally created — the user is sent to
+ * the discovered origin, completes the round-trip, and the callback writes
+ * the token + license back to wp_options. Uses the same slug + container
+ * the runtime auth check uses so registration and validation stay aligned.
+ *
+ * @since 2.3.2
+ *
+ * @return string
+ */
+function kadence_starter_templates_get_ai_auth_url(): string {
+	$slug = kadence_starter_templates_get_ai_auth_slug();
+
+	if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
+		return \KadenceWP\KadenceBlocks\StellarWP\Uplink\build_auth_url( $slug, get_license_domain() );
+	}
+
+	return build_auth_url( $slug, get_license_domain() );
+}
+
+/**
+ * Builds the URL used to disconnect (revoke) the stored AI auth token.
+ *
+ * @since 2.3.2
+ *
+ * @return string
+ */
+function kadence_starter_templates_get_ai_disconnect_url(): string {
+	$slug = kadence_starter_templates_get_ai_auth_slug();
+
+	if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
+		return \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_disconnect_url( $slug );
+	}
+
+	return get_disconnect_url( $slug );
+}
+
+/**
  * Check if a legacy (Uplink) Kadence Starter Templates license is authorized.
  *
  * AI features are not supported under Harbor licensing, so this function gates
@@ -61,18 +165,18 @@ function kadence_starter_templates_get_license_data() {
  * @return bool
  */
 function kadence_starter_templates_is_legacy_license_authorized(): bool {
-	$license_data = kadence_starter_templates_get_license_data();
-	$license_key  = $license_data['api_key'];
+	$license_key = kadence_starter_templates_get_ai_license_key();
 
-	if ( ! empty( $license_key ) ) {
-		$slug  = $license_data['product_slug'];
-		$token = get_authorization_token( $slug );
-		if ( is_authorized( $license_key, $slug, ( $token ?? '' ), get_license_domain() ) ) {
-			return true;
-		}
+	if ( empty( $license_key ) ) {
+		return false;
 	}
 
-	return false;
+	return is_authorized(
+		$license_key,
+		kadence_starter_templates_get_ai_auth_slug(),
+		kadence_starter_templates_get_ai_auth_token(),
+		get_license_domain()
+	);
 }
 
 /**

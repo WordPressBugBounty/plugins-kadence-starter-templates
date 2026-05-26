@@ -13,11 +13,8 @@ use ITSEC_Core;
 use LearnDash_Setup_Wizard;
 use LearnDash_Settings_Section;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_original_domain;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_authorization_token;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_disconnect_url;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\is_authorized;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\build_auth_url;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -786,22 +783,9 @@ class Site_Assist_Dash {
 		$disconnect_url = '';
 		$is_authorized  = false;
 		if ( ! $disable_ai ) {
-			$slug = class_exists( '\KadenceWP\KadenceBlocks\App' ) ? 'kadence-blocks' : 'kadence-starter-templates';
-			if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
-				$token    = \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_authorization_token( $slug );
-				$auth_url = \KadenceWP\KadenceBlocks\StellarWP\Uplink\build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
-			} else {
-				$token    = get_authorization_token( $slug );
-				$auth_url = build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
-			}
-			$license_data = kadence_starter_templates_get_license_data();
-			$license_key  = $license_data['api_key'];
-			if ( ! empty( $license_key ) ) {
-				$is_authorized = is_authorized( $license_key, apply_filters( 'kadence-blocks-auth-slug', $slug ), ( ! empty( $token ) ? $token : '' ), get_license_domain() );
-			}
-			if ( $is_authorized ) {
-				$disconnect_url = get_disconnect_url( apply_filters( 'kadence-blocks-auth-slug', $slug ) );
-			}
+			$auth_url       = kadence_starter_templates_get_ai_auth_url();
+			$is_authorized  = kadence_starter_templates_is_legacy_license_authorized();
+			$disconnect_url = $is_authorized ? kadence_starter_templates_get_ai_disconnect_url() : '';
 		}
 		$prophecy_data = json_decode( get_option( 'kadence_blocks_prophecy' ), true );
 		$site_assist_data = get_option( 'kadence_site_assist_tasks' );

@@ -7,11 +7,8 @@
 
 namespace KadenceWP\KadenceStarterTemplates;
 
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_key;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_authorization_token;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_disconnect_url;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\get_license_domain;
-use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\is_authorized;
 use function KadenceWP\KadenceStarterTemplates\StellarWP\Uplink\build_auth_url;
 use function activate_plugin;
 use function plugins_api;
@@ -186,7 +183,7 @@ class Starter_Templates {
 			add_action( 'wp_ajax_kadence_import_subscribe', array( $this, 'subscribe_ajax_callback' ) );
 			add_action( 'wp_ajax_kadence_check_plugin_data', array( $this, 'check_plugin_data_ajax_callback' ) );
 			add_action( 'wp_ajax_kadence_starter_dismiss_notice', array( $this, 'ajax_dismiss_starter_notice' ) );
-			
+
 			// Admin notices.
 			add_action( 'admin_notices', array( $this, 'xmlreader_extension_notice' ) );
 		}
@@ -837,7 +834,7 @@ class Starter_Templates {
 	/**
 	 * Get the current license key for the plugin.
 	 *
-	 * @return string 
+	 * @return string
 	 */
 	public function get_current_license_key() {
 
@@ -860,23 +857,10 @@ class Starter_Templates {
 		if ( $network_enabled && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( 'kadence-starter-templates/kadence-starter-templates.php' ) ) {
 			$using_network_enabled = true;
 		}
-		$slug = class_exists( '\KadenceWP\KadenceBlocks\App' ) ? 'kadence-blocks' : 'kadence-starter-templates';
-		if ( class_exists( '\KadenceWP\KadenceBlocks\App' ) ) {
-			$token          = \KadenceWP\KadenceBlocks\StellarWP\Uplink\get_authorization_token( $slug );
-			$auth_url       = \KadenceWP\KadenceBlocks\StellarWP\Uplink\build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
-		} else {
-			$token          = get_authorization_token( $slug );
-			$auth_url       = build_auth_url( apply_filters( 'kadence-blocks-auth-slug', $slug ), get_license_domain() );
-		}
+		$auth_url       = kadence_starter_templates_get_ai_auth_url();
 		$license_key    = $this->get_current_license_key();
-		$disconnect_url = '';
-		$is_authorized  = false;
-		if ( ! empty( $license_key ) ) {
-			$is_authorized = is_authorized( $license_key, apply_filters( 'kadence-blocks-auth-slug', $slug ), ( ! empty( $token ) ? $token : '' ), get_license_domain() );
-		}
-		if ( $is_authorized ) {
-			$disconnect_url = get_disconnect_url( apply_filters( 'kadence-blocks-auth-slug', $slug ) );
-		}
+		$is_authorized  = kadence_starter_templates_is_legacy_license_authorized();
+		$disconnect_url = $is_authorized ? kadence_starter_templates_get_ai_disconnect_url() : '';
 		$plugins = array (
 			'woocommerce' => array(
 				'title' => 'WooCommerce',
@@ -1868,7 +1852,7 @@ class Starter_Templates {
 						if ( ! current_user_can( 'install_plugins' ) ) {
 							wp_send_json_error( 'Permissions Issue' );
 						}
-						$silent = false; 
+						$silent = false;
 						//$silent = ( 'give' === $base || 'elementor' === $base ? false : true );
 						if ( 'give' === $base ) {
 							// Make sure give doesn't add it's pages, prevents having two sets.
@@ -2274,7 +2258,7 @@ class Starter_Templates {
 							$body['google'] = true;
 							set_theme_mod( 'base_font', $body );
 							break;
-	
+
 						case 'lora':
 							$current = \Kadence\kadence()->option( 'heading_font' );
 							$current['family']  = 'Lora';
@@ -2308,7 +2292,7 @@ class Starter_Templates {
 							$body['variant'] = '300';
 							set_theme_mod( 'base_font', $body );
 							break;
-	
+
 						case 'proza':
 							$current = \Kadence\kadence()->option( 'heading_font' );
 							$current['family']  = 'Proza Libre';
@@ -2320,7 +2304,7 @@ class Starter_Templates {
 							$body['google'] = true;
 							set_theme_mod( 'base_font', $body );
 							break;
-	
+
 						case 'worksans':
 							$current = \Kadence\kadence()->option( 'heading_font' );
 							$current['family']  = 'Work Sans';
@@ -2332,7 +2316,7 @@ class Starter_Templates {
 							$body['google'] = true;
 							set_theme_mod( 'base_font', $body );
 							break;
-	
+
 						case 'josefin':
 							$current = \Kadence\kadence()->option( 'heading_font' );
 							$current['family']  = 'Josefin Sans';
@@ -2344,7 +2328,7 @@ class Starter_Templates {
 							$body['google'] = true;
 							set_theme_mod( 'base_font', $body );
 							break;
-	
+
 						case 'nunito':
 							$current = \Kadence\kadence()->option( 'heading_font' );
 							$current['family']  = 'Nunito';
@@ -2706,7 +2690,7 @@ class Starter_Templates {
 			Helpers::set_import_data_transient( $this->get_current_importer_data() );
 			if ( ! $this->before_import_executed ) {
 				$this->before_import_executed = true;
-	
+
 				/**
 				 * Save Current Theme mods for a potential undo.
 				 */
@@ -2722,8 +2706,8 @@ class Starter_Templates {
 				}
 			}
 		}
-		
-	
+
+
 		/**
 		 * Execute the customizer import actions.
 		 *
