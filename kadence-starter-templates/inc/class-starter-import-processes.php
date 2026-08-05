@@ -4456,6 +4456,13 @@ class Starter_Import_Processes {
 
 	/**
 	 * Process images for block content.
+	 *
+	 * @since 2.2.14
+	 * @since 2.3.3 Added remapping of local background video and media block URLs to imported attachments.
+	 *
+	 * @param string $content  The block content.
+	 * @param array  $map_urls Map of original URLs to imported attachment data.
+	 * @return string
 	 */
 	public function loop_through_block_content_for_images( $content, $map_urls ) {
 		if ( empty( $content ) ) {
@@ -4535,6 +4542,15 @@ class Starter_Import_Processes {
 									}
 								}
 							}
+							if ( ! empty( $block['attrs']['backgroundVideo'] ) && is_array( $block['attrs']['backgroundVideo'] ) ) {
+								foreach ( $block['attrs']['backgroundVideo'] as &$video ) {
+									if ( ! empty( $video['local'] ) && isset( $map_urls[ $video['local'] ] ) ) {
+										$old_url         = $video['local'];
+										$video['local']  = $map_urls[ $old_url ]['url'];
+										$video['localID'] = absint( $map_urls[ $old_url ]['id'] );
+									}
+								}
+							}
 							break;
 						case 'kadence/infobox':
 							if ( !empty( $block['attrs']['mediaImage'][0]['url'] ) ) {
@@ -4571,6 +4587,15 @@ class Starter_Import_Processes {
 									$block['innerContent'] = str_replace( 'wp-image-' . $current_id, 'wp-image-' . $map_urls[ $image_url ]['id'], $block['innerContent'] );
 									$block['attrs']['background'][0]['img'] = $map_urls[ $image_url ]['url'];
 									$block['attrs']['background'][0]['imgID'] = $map_urls[ $image_url ]['id'];
+								}
+							}
+							if ( ! empty( $block['attrs']['media'] ) && is_array( $block['attrs']['media'] ) ) {
+								foreach ( $block['attrs']['media'] as &$media ) {
+									if ( ! empty( $media['url'] ) && isset( $map_urls[ $media['url'] ] ) ) {
+										$old_url       = $media['url'];
+										$media['url']  = $map_urls[ $old_url ]['url'];
+										$media['id']   = absint( $map_urls[ $old_url ]['id'] );
+									}
 								}
 							}
 							break;
@@ -4800,8 +4825,8 @@ class Starter_Import_Processes {
 		return array(
 			'id'  => $post_id,
 			'url' => $upload['url'],
-			'width' => $image_sizes['width'],
-			'height' => $image_sizes['height'],
+			'width' => isset( $image_sizes['width'] ) ? $image_sizes['width'] : 0,
+			'height' => isset( $image_sizes['height'] ) ? $image_sizes['height'] : 0,
 		);
 	}
 	/**
@@ -4828,9 +4853,13 @@ class Starter_Import_Processes {
 		return false;
 	}
 	/**
-	 * Check if link is for an image.
+	 * Check if link is for an image or local video file.
 	 *
-	 * @param string $link url possibly to an image.
+	 * @since 2.2.0
+	 * @since 2.3.3 Extended file-type detection to include video file extensions and matched by suffix instead of a full anchored URL.
+	 *
+	 * @param string $link url possibly to an image or video.
+	 * @return bool
 	 */
 	public function check_for_image( $link = '' ) {
 		if ( empty( $link ) ) {
@@ -4839,7 +4868,7 @@ class Starter_Import_Processes {
 		if ( substr( $link, 0, strlen( 'https://images.pexels.com' ) ) === 'https://images.pexels.com' ) {
 			return true;
 		}
-		return preg_match( '/^((https?:\/\/)|(www\.))([a-z0-9-].?)+(:[0-9]+)?\/[\w\-]+\.(jpg|png|gif|webp|jpeg|mp4)\/?$/i', $link );
+		return (bool) preg_match( '/\.(jpe?g|jpe|gif|png|webp|svg|mp4|mov|webm|m4v|avi)(\?[^\s"\']*)?$/i', $link );
 	}
 	/**
 	 * Checks if a given request has access to search content.

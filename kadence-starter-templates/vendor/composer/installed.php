@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'kadencewp/kadence-starter-templates',
-        'pretty_version' => '2.3.2',
-        'version' => '2.3.2.0',
-        'reference' => 'ce3ca3050f70e9ee45f619614d5042ffe4750a11',
+        'pretty_version' => '2.3.3',
+        'version' => '2.3.3.0',
+        'reference' => '055efb871799346c1bb39466ed6ac262b8ec8073',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -38,9 +38,9 @@
             'dev_requirement' => false,
         ),
         'kadencewp/kadence-starter-templates' => array(
-            'pretty_version' => '2.3.2',
-            'version' => '2.3.2.0',
-            'reference' => 'ce3ca3050f70e9ee45f619614d5042ffe4750a11',
+            'pretty_version' => '2.3.3',
+            'version' => '2.3.3.0',
+            'reference' => '055efb871799346c1bb39466ed6ac262b8ec8073',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -221,9 +221,9 @@
             'dev_requirement' => false,
         ),
         'symfony/mime' => array(
-            'pretty_version' => 'v5.4.45',
-            'version' => '5.4.45.0',
-            'reference' => '8c1b9b3e5b52981551fc6044539af1d974e39064',
+            'pretty_version' => 'v5.4.52',
+            'version' => '5.4.52.0',
+            'reference' => '8f89d3a319b92486b0bcc43c0479d19fdb0e2f64',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/mime',
             'aliases' => array(),

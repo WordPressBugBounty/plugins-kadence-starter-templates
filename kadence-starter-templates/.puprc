@@ -14,6 +14,14 @@
 		"npm run build"
 	],
 	"checks": {
+		"tbd": {
+			"fail_method": "error",
+			"fail_method_dev": "warn",
+			"dirs": [
+				"."
+			],
+			"skip_directories": "bin|build|vendor|node_modules|.git|.github|tests|dist|assets|languages|phpstan-cache|.phpstan"
+		},
 		"version-conflict": {
 			"fail_method": "error",
 			"fail_method_dev": "warn"

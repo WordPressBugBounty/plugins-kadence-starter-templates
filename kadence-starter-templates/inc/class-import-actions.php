@@ -60,6 +60,9 @@ class ImportActions {
 	/**
 	 * Find image urls in content and retrieve urls by array
 	 *
+	 * @since 1.1.1
+	 * @since 2.3.3 Added support for local video file URLs.
+	 *
 	 * @param string $content the post content.
 	 * @return array
 	 */
@@ -70,7 +73,7 @@ class ImportActions {
 		if ( ! empty( $link_match ) ) {
 			// Extract normal and image links.
 			foreach ( $link_match as $key => $link ) {
-				if ( preg_match( '/^((https?:\/\/)|(www\.))([a-z0-9-].?)+(:[0-9]+)?\/[\w\-]+\.(jpg|png|gif|jpeg|webp|svg|mp4)\/?$/i', $link ) ) {
+				if ( preg_match( '/\.(jpe?g|jpe|gif|png|webp|svg|mp4|mov|webm|m4v|avi)(\?[^\s"\']*)?$/i', $link ) ) {
 					$urls[] = $link;
 				}
 			}
@@ -107,7 +110,7 @@ class ImportActions {
 					$widget['content'] = preg_replace( '/' . preg_quote( $image['url'], '/' ) . '/', $url_already, $widget['content'] );
 				} else {
 					$image_data = self::sideload_image( $image['url'] );
-					if ( is_object( $image_data ) ) {
+					if ( ! is_wp_error( $image_data ) && is_object( $image_data ) ) {
 						$image_url = $image_data->url;
 						$widget['content'] = preg_replace( '/' . preg_quote( $image['url'], '/' ) . '/', $image_url, $widget['content'] );
 					}
@@ -122,15 +125,20 @@ class ImportActions {
 	 * modified to return an array of data instead of html.
 	 *
 	 * @since 1.1.1.
+	 * @since 2.3.3 Added support for video file extensions and a guard against non-matching file types.
+	 *
 	 * @param string $file The image file path.
 	 * @return array An array of image data.
 	 */
 	private function check_for_image( $file ) {
 		if ( ! empty( $file ) ) {
-			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4)\b/i', $file, $matches );
+			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4|mov|webm|m4v|avi)\b/i', $file, $matches );
+			if ( empty( $matches[0] ) ) {
+				return false;
+			}
 			$file_name = basename( $matches[0] );
-			$ext = array( ".png", ".jpg", ".gif", ".jpeg", ".webp", ".mp4" );
-			$clean_filename = str_replace( $ext, "", $file_name );
+			$ext = array( '.png', '.jpg', '.gif', '.jpeg', '.webp', '.mp4', '.mov', '.webm', '.m4v', '.avi' );
+			$clean_filename = str_replace( $ext, '', $file_name );
 			$clean_filename = trim( html_entity_decode( sanitize_title( $clean_filename ) ) );
 			if ( post_exists( $clean_filename ) ) {
 				$attachment = $this->get_page_by_title( $clean_filename, OBJECT, 'attachment' );
@@ -148,6 +156,8 @@ class ImportActions {
 	 * modified to return an array of data instead of html.
 	 *
 	 * @since 1.1.1.
+	 * @since 2.3.3 Added support for video file extensions, a guard against non-matching file types, and a fallback for missing image dimensions.
+	 *
 	 * @param string $file The image file path.
 	 * @return array An array of image data.
 	 */
@@ -161,7 +171,10 @@ class ImportActions {
 		}
 		if ( ! empty( $file ) ) {
 			// Set variables for storage, fix file filename for query strings.
-			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp)\b/i', $file, $matches );
+			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4|mov|webm|m4v|avi)\b/i', $file, $matches );
+			if ( empty( $matches[0] ) ) {
+				return new \WP_Error( 'invalid_file', __( 'Invalid media file type.', 'kadence-starter-templates' ) );
+			}
 			$file_array = array();
 			$file_array['name'] = basename( $matches[0] );
 
@@ -187,8 +200,8 @@ class ImportActions {
 			$data->attachment_id = $id;
 			$data->url           = wp_get_attachment_url( $id );
 			$data->thumbnail_url = wp_get_attachment_thumb_url( $id );
-			$data->height        = $meta['height'];
-			$data->width         = $meta['width'];
+			$data->height        = isset( $meta['height'] ) ? $meta['height'] : 0;
+			$data->width         = isset( $meta['width'] ) ? $meta['width'] : 0;
 		}
 
 		return $data;
@@ -229,6 +242,9 @@ class ImportActions {
 	/**
 	 * Change the links to use the current site.
 	 *
+	 * @since 1.1.1
+	 * @since 2.3.3 Extended media URL detection to include video file extensions.
+	 *
 	 * @param array $widget The widget settings array.
 	 */
 	public function fix_widget_links( $widget ) {
@@ -246,7 +262,7 @@ class ImportActions {
 		if ( ! empty( $all_links ) ) {
 			// Extract normal and image links.
 			foreach ( $all_links as $key => $link ) {
-				if ( ! preg_match( '/^((https?:\/\/)|(www\.))([a-z0-9-].?)+(:[0-9]+)?\/[\w\-]+\.(jpg|png|gif|jpeg|webp|svg|mp4)\/?$/i', $link ) )  {
+				if ( ! preg_match( '/\.(jpe?g|jpe|gif|png|webp|svg|mp4|mov|webm|m4v|avi)(\?[^\s"\']*)?$/i', $link ) )  {
 					$page_links[] = $link;
 				}
 			}

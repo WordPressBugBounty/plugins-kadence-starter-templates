@@ -247,18 +247,18 @@ class Kadence_Starter_Templates_AI_Events {
 	/**
 	 * Searches an array of collections for the name of a collection with a specific ID.
 	 *
-	 * @param array $collections An array of collections.
+	 * @param array  $collections An array of collections.
 	 * @param string $id The ID of a collection.
 	 *
-	 * @return array
+	 * @return string
 	 */
 	private function get_custom_collection_name_by_id( array $collections, string $id ): string {
 		foreach ( $collections as $collection ) {
 			if ( $collection['value'] === $id ) {
 				return $collection['label'] ?? '';
 			}
-
-			return '';
 		}
+
+		return '';
 	}
 }

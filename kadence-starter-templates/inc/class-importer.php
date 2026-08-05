@@ -51,6 +51,10 @@ class Importer {
 		'png'          => 'image/png',
 		'webp'         => 'image/webp',
 		'svg'          => 'image/svg+xml',
+		'mp4|m4v'       => 'video/mp4',
+		'mov|qt'        => 'video/quicktime',
+		'webm'          => 'video/webm',
+		'avi'           => 'video/avi',
 	);
 	/**
 	 * Constructor method.
@@ -239,10 +243,14 @@ class Importer {
 	/**
 	 * Process internal_links
 	 *
+	 * @since 1.2.6
+	 * @since 2.3.3 Extended media URL detection to include video file extensions.
+	 *
 	 * @param array $data Raw data imported for the post.
 	 * @param array $meta Raw meta data, already processed by {@see process_post_meta}.
 	 * @param array $comments Raw comment data, already processed by {@see process_comments}.
 	 * @param array $terms Raw term data, already processed.
+	 * @return array
 	 */
 	public function process_internal_links( $data, $meta, $comments, $terms ) {
 		if ( ! empty( $data['post_content'] ) && has_blocks( $data['post_content'] ) ) {
@@ -257,9 +265,11 @@ class Importer {
 			if ( ! empty( $all_links ) ) {
 				// Extract normal and image links.
 				foreach ( $all_links as $key => $link ) {
-					if ( ! preg_match( '/^((https?:\/\/)|(www\.))([a-z0-9-].?)+(:[0-9]+)?\/[\w\-]+\.(jpg|png|gif|jpeg|webp|svg)\/?$/i', $link ) )  {
-						$page_links[] = $link;
+					// Skip media URLs; WXR url_remap handles attachment paths after sideload.
+					if ( preg_match( '/\.(jpe?g|jpe|gif|png|webp|svg|mp4|mov|webm|m4v|avi)(\?[^\s"\']*)?$/i', $link ) ) {
+						continue;
 					}
+					$page_links[] = $link;
 				}
 				$demo_data = get_option( '_kadence_starter_templates_last_import_data', array() );
 				if ( ! empty( $demo_data['url'] ) ) {
@@ -562,7 +572,13 @@ class Importer {
 	/**
 	 * Check if we need to create a new AJAX request, so that server does not timeout.
 	 *
+	 * @since 1.0.4
+	 * @since 2.3.3 Added host remapping and a local file existence check before sideloading media.
+	 *
 	 * @param array $data current post data.
+	 * @param array $meta Raw meta data, already processed by {@see process_post_meta}.
+	 * @param array $comments Raw comment data, already processed by {@see process_comments}.
+	 * @param array $terms Raw term data, already processed.
 	 * @return array
 	 */
 	public function check_for_content_images( $data, $meta, $comments, $terms ) {
@@ -611,14 +627,23 @@ class Importer {
 			}
 			foreach ( $images as $image ) {
 				if ( ! empty( $image['url'] ) ) {
-					$url_already = $this->check_for_image( $image['url'] );
+					$source_url  = $image['url'];
+					$remapped_url = $this->remap_host( $source_url );
+					$url_already = $this->check_for_image( $source_url );
+					if ( ! $url_already && $remapped_url !== $source_url ) {
+						$upload_dir  = wp_get_upload_dir();
+						$local_path  = str_replace( $upload_dir['baseurl'], $upload_dir['basedir'], $remapped_url );
+						if ( file_exists( $local_path ) ) {
+							$url_already = $remapped_url;
+						}
+					}
 					if ( $url_already ) {
-						$data['post_content'] = preg_replace( '/' . preg_quote( $image['url'], '/' ) . '/', $url_already, $data['post_content'] );
+						$data['post_content'] = preg_replace( '/' . preg_quote( $source_url, '/' ) . '/', $url_already, $data['post_content'] );
 					} else {
-						$image_data = self::sideload_image( $image['url'] );
-						if ( is_object( $image_data ) ) {
+						$image_data = self::sideload_image( $source_url );
+						if ( ! is_wp_error( $image_data ) && is_object( $image_data ) ) {
 							$image_url = $image_data->url;
-							$data['post_content'] = preg_replace( '/' . preg_quote( $image['url'], '/' ) . '/', $image_url, $data['post_content'] );
+							$data['post_content'] = preg_replace( '/' . preg_quote( $source_url, '/' ) . '/', $image_url, $data['post_content'] );
 						}
 					}
 				}
@@ -666,15 +691,20 @@ class Importer {
 	 * modified to return an array of data instead of html.
 	 *
 	 * @since 1.1.1.
+	 * @since 2.3.3 Added support for video file extensions and a guard against non-matching file types.
+	 *
 	 * @param string $file The image file path.
 	 * @return array An array of image data.
 	 */
 	private function check_for_image( $file ) {
 		if ( ! empty( $file ) ) {
-			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4)\b/i', $file, $matches );
+			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4|mov|webm|m4v|avi)\b/i', $file, $matches );
+			if ( empty( $matches[0] ) ) {
+				return false;
+			}
 			$file_name = basename( $matches[0] );
-			$ext = array( ".png", ".jpg", ".gif", ".jpeg", ".webp", ".mp4" );
-			$clean_filename = str_replace( $ext, "", $file_name );
+			$ext = array( '.png', '.jpg', '.gif', '.jpeg', '.webp', '.mp4', '.mov', '.webm', '.m4v', '.avi' );
+			$clean_filename = str_replace( $ext, '', $file_name );
 			$clean_filename = trim( html_entity_decode( sanitize_title( $clean_filename ) ) );
 			if ( post_exists( $clean_filename ) ) {
 				$attachment = $this->get_page_by_title( $clean_filename, OBJECT, 'attachment' );
@@ -693,6 +723,8 @@ class Importer {
 	 * modified to return an array of data instead of html.
 	 *
 	 * @since 1.1.1.
+	 * @since 2.3.3 Added support for video file extensions, a guard against non-matching file types, and a fallback for missing image dimensions.
+	 *
 	 * @param string $file The image file path.
 	 * @return array An array of image data.
 	 */
@@ -706,7 +738,10 @@ class Importer {
 		}
 		if ( ! empty( $file ) ) {
 			// Set variables for storage, fix file filename for query strings.
-			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp)\b/i', $file, $matches );
+			preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png|webp|mp4|mov|webm|m4v|avi)\b/i', $file, $matches );
+			if ( empty( $matches[0] ) ) {
+				return new \WP_Error( 'invalid_file', __( 'Invalid media file type.', 'kadence-starter-templates' ) );
+			}
 			$file_array = array();
 			$file_array['name'] = basename( $matches[0] );
 
@@ -732,14 +767,17 @@ class Importer {
 			$data->attachment_id = $id;
 			$data->url           = wp_get_attachment_url( $id );
 			$data->thumbnail_url = wp_get_attachment_thumb_url( $id );
-			$data->height        = $meta['height'];
-			$data->width         = $meta['width'];
+			$data->height        = isset( $meta['height'] ) ? $meta['height'] : 0;
+			$data->width         = isset( $meta['width'] ) ? $meta['width'] : 0;
 		}
 
 		return $data;
 	}
 	/**
 	 * Find image urls in content and retrieve urls by array
+	 *
+	 * @since 1.0.4
+	 * @since 2.3.3 Added detection of local background video URLs.
 	 *
 	 * @param string $content the post content.
 	 * @return array
@@ -771,10 +809,17 @@ class Importer {
 			$urls = array_merge( $bg_urls, $urls );
 		}
 
+		preg_match_all( '/"local":"([^"]+)"/i', $content, $video_urls, PREG_SET_ORDER );
+		if ( is_array( $video_urls ) ) {
+			$urls = array_merge( $video_urls, $urls );
+		}
+
 		if ( count( $urls ) == 0 ) {
 			return array();
 		}
 
+		$images = array();
+		$unique_array = array();
 		foreach ( $urls as $index => &$url ) {
 			$images[ $index ]['url'] = $url = $url[1];
 		}
