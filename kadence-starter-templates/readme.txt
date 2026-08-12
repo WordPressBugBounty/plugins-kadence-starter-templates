@@ -2,8 +2,8 @@
 Contributors: britner
 Tags: templates, gutenberg
 Requires at least: 6.2
-Tested up to: 6.9
-Stable tag: 2.3.3
+Tested up to: 7.0
+Stable tag: 2.3.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -122,6 +122,13 @@ assist you with verification, CVE assignment, and notify the
 developers of this plugin.
 
 == Changelog ==
+= 2.3.4 =
+Release Date: 12th August 2026
+* Security: Enhanced security on image processing REST API module.
+* Add: Kadence Creative Kit is now shown as a recommended plugin on the template plugins screen.
+* Fix: Only a bundled plugin that the selected template actually requires will block the import from continuing.
+* Fix: Corrected the "Kadence Blocks Pro" plugin title.
+
 = 2.3.3 =
 Release Date: 5th August 2026
 * Fix: Background videos in row layouts and media blocks are now imported and linked correctly when using a starter template.

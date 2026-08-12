@@ -5460,7 +5460,7 @@ class Starter_Import_Processes {
 				'src'   => 'repo',
 			),
 			'kadence-blocks-pro' => array(
-				'title' => 'Kadence Block Pro',
+				'title' => 'Kadence Blocks Pro',
 				'base'  => 'kadence-blocks-pro',
 				'slug'  => 'kadence-blocks-pro',
 				'path'  => 'kadence-blocks-pro/kadence-blocks-pro.php',
@@ -5471,6 +5471,13 @@ class Starter_Import_Processes {
 				'base'  => 'kadence-pro',
 				'slug'  => 'kadence-pro',
 				'path'  => 'kadence-pro/kadence-pro.php',
+				'src'   => 'bundle',
+			),
+			'kadence-creative-kit' => array(
+				'title' => 'Kadence Creative Kit',
+				'base'  => 'kadence-creative-kit',
+				'slug'  => 'kadence-creative-kit',
+				'path'  => 'kadence-creative-kit/kadence-creative-kit.php',
 				'src'   => 'bundle',
 			),
 			'fluentform' => array(

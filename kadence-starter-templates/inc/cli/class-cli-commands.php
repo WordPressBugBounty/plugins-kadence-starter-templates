@@ -51,6 +51,7 @@ class CLI_Commands {
 		'kadence-blocks',
 		'kadence-blocks-pro',
 		'kadence-pro',
+		'kadence-creative-kit',
 		'fluentform',
 		'wpzoom-recipe-card',
 		'learndash',

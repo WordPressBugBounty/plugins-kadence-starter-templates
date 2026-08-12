@@ -880,7 +880,7 @@ class Starter_Templates {
 				'src'   => 'repo',
 			),
 			'kadence-blocks-pro' => array(
-				'title' => 'Kadence Block Pro',
+				'title' => 'Kadence Blocks Pro',
 				'description' => __( 'Kadence Blocks Pro is a plugin that adds additional features to Kadence Blocks.', 'kadence-starter-templates' ),
 				'state' => Plugin_Check::active_check( 'kadence-blocks-pro/kadence-blocks-pro.php' ),
 				'src'   => 'bundle',
@@ -889,6 +889,12 @@ class Starter_Templates {
 				'title' => 'Kadence Pro',
 				'description' => __( 'Kadence Pro is a plugin that adds additional features to the Kadence Theme.', 'kadence-starter-templates' ),
 				'state' => Plugin_Check::active_check( 'kadence-pro/kadence-pro.php' ),
+				'src'   => 'bundle',
+			),
+			'kadence-creative-kit' => array(
+				'title' => 'Kadence Creative Kit',
+				'description' => __( 'Kadence Creative Kit unlocks access to the Marquee Block.', 'kadence-starter-templates' ),
+				'state' => Plugin_Check::active_check( 'kadence-creative-kit/kadence-creative-kit.php' ),
 				'src'   => 'bundle',
 			),
 			'fluentform' => array(
@@ -1296,7 +1302,7 @@ class Starter_Templates {
 				'kadence_blocks_prophecy',
 				array(
 					'type'              => 'string',
-					'description'       => __( 'Config Kadence Block Prophecy AI', 'kadence-starter-templates' ),
+					'description'       => __( 'Config Kadence Blocks Prophecy AI', 'kadence-starter-templates' ),
 					'sanitize_callback' => 'sanitize_text_field',
 					'show_in_rest'      => true,
 					'default'           => '',
@@ -1354,7 +1360,7 @@ class Starter_Templates {
 					'src'   => 'repo',
 				),
 				'kadence-blocks-pro' => array(
-					'title' => 'Kadence Block Pro',
+					'title' => 'Kadence Blocks Pro',
 					'base'  => 'kadence-blocks-pro',
 					'slug'  => 'kadence-blocks-pro',
 					'path'  => 'kadence-blocks-pro/kadence-blocks-pro.php',
@@ -1365,6 +1371,13 @@ class Starter_Templates {
 					'base'  => 'kadence-pro',
 					'slug'  => 'kadence-pro',
 					'path'  => 'kadence-pro/kadence-pro.php',
+					'src'   => 'bundle',
+				),
+				'kadence-creative-kit' => array(
+					'title' => 'Kadence Creative Kit',
+					'base'  => 'kadence-creative-kit',
+					'slug'  => 'kadence-creative-kit',
+					'path'  => 'kadence-creative-kit/kadence-creative-kit.php',
 					'src'   => 'bundle',
 				),
 				'fluentform' => array(
@@ -1472,12 +1485,12 @@ class Starter_Templates {
 					$path = $plugin;
 					$arr  = explode( '/', $plugin, 2 );
 					$base = $arr[0];
-					if ( isset( $importer_plugins[ $base ] ) && isset( $importer_plugins[ $base ]['src'] ) ) {
+					if ( isset( $importer_plugins[ $base ] ) ) {
 						$src = $importer_plugins[ $base ]['src'];
 					} else {
 						$src = 'unknown';
 					}
-					if ( isset( $importer_plugins[ $base ] ) && isset( $importer_plugins[ $base ]['title'] ) ) {
+					if ( isset( $importer_plugins[ $base ] ) ) {
 						$title = $importer_plugins[ $base ]['title'];
 					} else {
 						$title = $base;
@@ -1617,7 +1630,7 @@ class Starter_Templates {
 					'src'   => 'repo',
 				),
 				'kadence-blocks-pro' => array(
-					'title' => 'Kadence Block Pro',
+					'title' => 'Kadence Blocks Pro',
 					'base'  => 'kadence-blocks-pro',
 					'slug'  => 'kadence-blocks-pro',
 					'path'  => 'kadence-blocks-pro/kadence-blocks-pro.php',
@@ -1628,6 +1641,13 @@ class Starter_Templates {
 					'base'  => 'kadence-pro',
 					'slug'  => 'kadence-pro',
 					'path'  => 'kadence-pro/kadence-pro.php',
+					'src'   => 'bundle',
+				),
+				'kadence-creative-kit' => array(
+					'title' => 'Kadence Creative Kit',
+					'base'  => 'kadence-creative-kit',
+					'slug'  => 'kadence-creative-kit',
+					'path'  => 'kadence-creative-kit/kadence-creative-kit.php',
 					'src'   => 'bundle',
 				),
 				'fluentform' => array(
@@ -1756,7 +1776,7 @@ class Starter_Templates {
 					$path = $plugin;
 					$arr  = explode( '/', $plugin, 2 );
 					$base = $arr[0];
-					if ( isset( $importer_plugins[ $base ] ) && isset( $importer_plugins[ $base ]['src'] ) ) {
+					if ( isset( $importer_plugins[ $base ] ) ) {
 						$src = $importer_plugins[ $base ]['src'];
 					} else {
 						$src = 'unknown';

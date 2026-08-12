@@ -17,20 +17,25 @@ trait Image_Trait {
 	 * @return array|array<int, array{id: int, width: int, height: int, crop: bool}>
 	 */
 	public function sanitize_image_sizes_array( $sizes ): array {
-		$new_sizes = [];
+		if ( empty( $sizes ) || ! is_array( $sizes ) ) {
+			return array();
+		}
 
-		if ( ! empty( $sizes ) || ! is_array( $sizes ) ) {
-			foreach ( $sizes as $value ) {
-				$new_sizes[] = [
-					'id'     => sanitize_text_field( $value['id'] ),
-					'width'  => absint( $value['width'] ),
-					'height' => absint( $value['height'] ),
-					'crop'   => filter_var( $value['crop'], FILTER_VALIDATE_BOOLEAN ),
-				];
+		$sizes = array_slice( $sizes, 0, 50 );
+		$new_sizes = array();
+
+		foreach ( $sizes as $value ) {
+			if ( ! is_array( $value ) ) {
+				continue;
 			}
+			$new_sizes[] = array(
+				'id'    => isset( $value['id'] ) ? sanitize_text_field( $value['id'] ) : '',
+				'width' => isset( $value['width'] ) ? absint( $value['width'] ) : 0,
+				'height' => isset( $value['height'] ) ? absint( $value['height'] ) : 0,
+				'crop'  => isset( $value['crop'] ) ? filter_var( $value['crop'], FILTER_VALIDATE_BOOLEAN ) : false,
+			);
 		}
 
 		return $new_sizes;
 	}
-
 }

@@ -126,6 +126,10 @@ class Library_REST_Controller extends WP_REST_Controller {
 	 */
 	const PROP_INDUSTRY = 'industry';
 
+	/**
+	 * Maximum size for REST array parameters
+	 */
+	const MAX_REST_ARRAY_SIZE = 50;
 
 	/**
 	 * Instance of this class
@@ -3493,6 +3497,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 	public function get_items_permission_check( $request ) {
 		return current_user_can( 'manage_options' );
 	}
+
 	/**
 	 * Retrieves the query params for the search results collection.
 	 *
@@ -3575,11 +3580,13 @@ class Library_REST_Controller extends WP_REST_Controller {
 			'description'       => __( 'The industries to return', 'kadence-starter-templates' ),
 			'type'              => 'array',
 			'sanitize_callback' => array( $this, 'sanitize_industries_array' ),
+			'validate_callback' => array( $this, 'validate_array' ),
 		);
 		$query_params[ self::PROP_IMAGE_SIZES ] = array(
 			'description'       => __( 'The Image type to return', 'kadence-starter-templates' ),
 			'type'              => 'array',
 			'sanitize_callback' => array( $this, 'sanitize_image_sizes_array' ),
+			'validate_callback' => array( $this, 'validate_array' ),
 		);
 		// $query_params[ self::PROP_PAGES ] = array(
 		// 	'description'       => __( 'Import Pages', 'kadence-starter-templates' ),
@@ -3590,25 +3597,28 @@ class Library_REST_Controller extends WP_REST_Controller {
 		// 	'sanitize_callback' => array( $this, 'sanitize_pages' ),
 		// 	'validate_callback' => array( $this, 'validate_array' ),
 		// );
+
 		return $query_params;
 	}
+
 	/**
 	 * Sanitizes an array of industries.
 	 *
-	 * @param array    $industries One or more size arrays.
-	 * @param WP_REST_Request $request   Full details about the request.
-	 * @param string          $parameter Parameter name.
+	 * @param array            $industries One or more size arrays.
+	 * @param WP_REST_Request  $request    Full details about the request.
+	 * @param string           $parameter  Parameter name.
 	 * @return array|WP_Error List of valid subtypes, or WP_Error object on failure.
 	 */
 	public function sanitize_industries_array( $industries, $request ) {
-		if ( ! empty( $industries ) && is_array( $industries ) ) {
-			$new_industries = array();
-			foreach ( $industries as $key => $value ) {
-				$new_industries[] = sanitize_text_field( $value );
-			}
-			return $new_industries;
+		if ( ! is_array( $industries ) ) {
+			return array();
 		}
-		return array();
+		$industries = array_slice( $industries, 0, self::MAX_REST_ARRAY_SIZE );
+		$new_industries = array();
+		foreach ( $industries as $key => $value ) {
+			$new_industries[] = sanitize_text_field( $value );
+		}
+		return $new_industries;
 	}
 	/**
 	 * Imports a collection of images.
@@ -4169,7 +4179,7 @@ class Library_REST_Controller extends WP_REST_Controller {
 				'src'   => 'repo',
 			),
 			'kadence-blocks-pro' => array(
-				'title' => 'Kadence Block Pro',
+				'title' => 'Kadence Blocks Pro',
 				'base'  => 'kadence-blocks-pro',
 				'slug'  => 'kadence-blocks-pro',
 				'path'  => 'kadence-blocks-pro/kadence-blocks-pro.php',
@@ -4180,6 +4190,13 @@ class Library_REST_Controller extends WP_REST_Controller {
 				'base'  => 'kadence-pro',
 				'slug'  => 'kadence-pro',
 				'path'  => 'kadence-pro/kadence-pro.php',
+				'src'   => 'bundle',
+			),
+			'kadence-creative-kit' => array(
+				'title' => 'Kadence Creative Kit',
+				'base'  => 'kadence-creative-kit',
+				'slug'  => 'kadence-creative-kit',
+				'path'  => 'kadence-creative-kit/kadence-creative-kit.php',
 				'src'   => 'bundle',
 			),
 			'fluentform' => array(
@@ -4366,13 +4383,17 @@ class Library_REST_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Validates the list of subtypes, to ensure it's an array.
+	 * Validates an array REST parameter.
 	 *
-	 * @param array    $value  One or more subtypes.
-	 * @return bool    true or false.
+	 * @param mixed $value Parameter value to validate.
+	 * @return bool True if the value is a valid array within the size limit.
 	 */
 	public function validate_array( $value ) {
-		return is_array( $value );
+		if ( ! is_array( $value ) ) {
+			return false;
+		}
+
+		return count( $value ) <= self::MAX_REST_ARRAY_SIZE;
 	}
 	/**
 	 * Validates the list of subtypes, to ensure it's an array.
